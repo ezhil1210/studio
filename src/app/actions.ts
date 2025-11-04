@@ -15,6 +15,8 @@ import {
   where,
   writeBatch,
   Timestamp,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
@@ -116,8 +118,8 @@ export async function getVoterStatus(uid: string): Promise<{ hasVoted: boolean }
   }
   const db = getDb();
   
-  const votesQuery = query(collection(db, "blocks"), where('voterIds', 'array-contains', uid));
-  const querySnapshot = await getDocs(votesQuery);
+  const blocksQuery = query(collection(db, "blocks"), where('voterIds', 'array-contains', uid));
+  const querySnapshot = await getDocs(blocksQuery);
 
   return { hasVoted: !querySnapshot.empty };
 }
@@ -136,6 +138,7 @@ export async function castVote({
   const db = getDb();
 
   try {
+    // This check is now bypassed in the client, but remains as a server-side safeguard.
     const { hasVoted } = await getVoterStatus(uid);
     if (hasVoted) {
       return { success: false, error: "You have already voted." };
@@ -208,12 +211,26 @@ export async function castVote({
 // --- DATA FETCHING ACTIONS ---
 
 export async function getVoteResults(): Promise<Record<string, number>> {
-  // Return hardcoded results
-  return {
-    "Candidate Alpha": 8,
-    "Candidate Bravo": 5,
-    "Candidate Charlie": 2,
+  const db = getDb();
+  const results: Record<string, number> = {
+    "Candidate Alpha": 0,
+    "Candidate Bravo": 0,
+    "Candidate Charlie": 0,
   };
+  const blocksSnapshot = await getDocs(collection(db, "blocks"));
+  
+  for (const blockDoc of blocksSnapshot.docs) {
+    const votesQuery = query(collection(db, `blocks/${blockDoc.id}/votes`));
+    const votesSnapshot = await getDocs(votesQuery);
+    votesSnapshot.forEach(voteDoc => {
+      const voteData = voteDoc.data();
+      if (voteData.encryptedVoteData in results) {
+        results[voteData.encryptedVoteData]++;
+      }
+    });
+  }
+
+  return results;
 }
 
 type Vote = {
@@ -235,71 +252,25 @@ type Block = {
 };
 
 export async function getBlockchainData(): Promise<Block[]> {
-    const sampleVotes: { candidate: string, voterId: string }[] = [
-        { candidate: 'Candidate Alpha', voterId: 'voter-001' },
-        { candidate: 'Candidate Bravo', voterId: 'voter-002' },
-        { candidate: 'Candidate Alpha', voterId: 'voter-003' },
-        { candidate: 'Candidate Charlie', voterId: 'voter-004' },
-        { candidate: 'Candidate Alpha', voterId: 'voter-005' },
-        { candidate: 'Candidate Bravo', voterId: 'voter-006' },
-        { candidate: 'Candidate Alpha', voterId: 'voter-007' },
-        { candidate: 'Candidate Bravo', voterId: 'voter-008' },
-        { candidate: 'Candidate Alpha', voterId: 'voter-009' },
-        { candidate: 'Candidate Charlie', voterId: 'voter-010' },
-        { candidate: 'Candidate Bravo', voterId: 'voter-011' },
-        { candidate: 'Candidate Alpha', voterId: 'voter-012' },
-        { candidate: 'Candidate Bravo', voterId: 'voter-013' },
-        { candidate: 'Candidate Alpha', voterId: 'voter-014' },
-        { candidate: 'Candidate Alpha', voterId: 'voter-015' },
-    ];
-    
-    const blocks: Block[] = [];
-    let previousBlockHash = "0".repeat(64);
-    let lastTimestamp = new Date('2024-01-01T10:00:00.000Z').getTime();
+  const db = getDb();
+  const blocks: Block[] = [];
+  const blocksSnapshot = await getDocs(query(collection(db, "blocks"), orderBy("timestamp", "asc")));
+  
+  for (const blockDoc of blocksSnapshot.docs) {
+      const blockData = blockDoc.data() as Omit<Block, 'votes'>;
+      const votes: Vote[] = [];
 
-    for (let i = 0; i < sampleVotes.length; i++) {
-        lastTimestamp += 1000 * 60 * (i + 1); // Increment timestamp
-        const currentTimestamp = new Date(lastTimestamp).toISOString();
-        const vote = sampleVotes[i];
+      const votesQuery = query(collection(db, `blocks/${blockDoc.id}/votes`));
+      const votesSnapshot = await getDocs(votesQuery);
+      votesSnapshot.forEach(voteDoc => {
+          votes.push(voteDoc.data() as Vote);
+      });
 
-        const blockId = `block-${i}`;
-        const voteId = `vote-${i}`;
-
-        const newVote: Vote = {
-            id: voteId,
-            voterId: vote.voterId,
-            encryptedVoteData: vote.candidate,
-            timestamp: currentTimestamp,
-            blockId: blockId,
-        };
-
-        const newBlockData: Omit<Block, 'hash' | 'votes'> = {
-            id: blockId,
-            timestamp: newVote.timestamp,
-            previousBlockHash: previousBlockHash,
-            voteIds: [newVote.id],
-            voterIds: [vote.voterId],
-        };
-
-        const blockContentForHashing = {
-            id: newBlockData.id,
-            timestamp: newBlockData.timestamp,
-            previousBlockHash: newBlockData.previousBlockHash,
-            voteIds: newBlockData.voteIds,
-            voterIds: newBlockData.voterIds,
-        };
-        
-        const hash = createHash("sha256").update(JSON.stringify(blockContentForHashing)).digest("hex");
-        
-        blocks.push({
-            ...newBlockData,
-            hash,
-            votes: [newVote],
-        });
-
-        previousBlockHash = hash;
-    }
-    
-    // Return in descending order of time for the page
-    return blocks.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      blocks.push({
+          ...blockData,
+          votes: votes,
+      });
+  }
+  
+  return blocks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }

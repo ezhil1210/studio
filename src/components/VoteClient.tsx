@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { cn } from "@/lib/utils";
-import { castVote, getVoterStatus } from "@/app/actions";
+import { castVote } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, CheckCircle, Vote, Star, Heart, Triangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,7 +22,6 @@ export function VoteClient() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
-  const [checkingVoteStatus, setCheckingVoteStatus] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
   
@@ -33,18 +32,6 @@ export function VoteClient() {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
-
-  useEffect(() => {
-    if (user && !isUserLoading) {
-      setCheckingVoteStatus(true);
-      getVoterStatus(user.uid).then(status => {
-          setHasVoted(status.hasVoted);
-          setCheckingVoteStatus(false);
-      });
-    } else if (!user && !isUserLoading) {
-      setCheckingVoteStatus(false);
-    }
-  }, [user, isUserLoading]);
   
 
   const handleVote = async () => {
@@ -80,14 +67,11 @@ export function VoteClient() {
         title: "Voting Failed",
         description: result.error || "An unknown error occurred.",
       });
-      if (result.error === "You have already voted.") {
-        setHasVoted(true);
-      }
     }
     setIsSubmitting(false);
   };
   
-  if (isUserLoading || checkingVoteStatus) {
+  if (isUserLoading) {
     return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -127,7 +111,7 @@ export function VoteClient() {
           </CardHeader>
           <CardContent>
             <CardDescription className="text-lg">
-              Your vote has been securely recorded on the blockchain.
+              Your vote has been securely recorded on the blockchain. Refresh the page to vote again.
             </CardDescription>
           </CardContent>
         </Card>
