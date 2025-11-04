@@ -1,83 +1,34 @@
-/**
- * @file Firestore Security Rules for eVoteChain Prototype
- * @core_philosophy This ruleset enforces a strict data segregation and ownership model,
- *  leveraging denormalization to minimize reads in security rules. It prioritizes
- *  authorization and relational integrity over full schema validation during this prototyping phase.
- * @data_structure
- *  - /voters/{voterId}: Stores voter profiles. Accessible only to the voter themselves (owner).
- *  - /blocks/{blockId}: Stores blockchain blocks. Publicly readable, writes restricted.
- *  - /blocks/{blockId}/votes/{voteId}: Stores individual votes within blocks.  Writes restricted, reads open.
- *  - /fraudulent_activities/{fraudulentActivityId}: Stores records of suspicious activity. Writes are heavily restricted.
- * @key_security_decisions
- *  - Voters can only read and modify their own voter profile.
- *  - Listing voters is disallowed.
- *  - Votes are stored within blocks and cannot be directly modified after creation.
- *  - Fraudulent activity records can only be created by trusted processes.
- * @denormalization_for_authorization
- *  - Votes: Contains a denormalized `voterId` to allow verification without additional reads.
- *  - FraudulentActivity: Includes a denormalized `voterId` for efficient rules.
- */
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Manages voter profiles. Each voter can only access their own profile.
-     * @path /voters/{voterId}
-     * @allow (create) User with UID 'user_abc' can create a profile at /voters/user_abc.
-     * @deny (create) User with UID 'user_xyz' cannot create a profile at /voters/user_abc.
-     * @allow (get) User with UID 'user_abc' can read the profile at /voters/user_abc.
-     * @deny (get) User with UID 'user_xyz' cannot read the profile at /voters/user_abc.
-     * @principle Enforces document ownership for reads and writes.
-     */
+    // Voters can be created by any authenticated user.
+    // They can only read/update their own data.
     match /voters/{voterId} {
-      allow create: if isSignedIn() && isOwner(voterId) && request.resource.data.id == voterId;
-      allow get: if isSignedIn() && isOwner(voterId);
-      allow list: if false;
-      allow update: if isSignedIn() && isOwner(voterId) && request.resource.data.id == resource.data.id;
-      allow delete: if false;
+      allow create: if isSignedIn();
+      allow get, update: if isSignedIn() && isOwner(voterId);
+      allow list, delete: if false;
     }
 
-    /**
-     * @description Manages individual votes within blocks.
-     * @path /blocks/{blockId}/votes/{voteId}
-     * @allow (get) Any signed-in user can read any vote.
-     * @deny (create) No one can create votes directly (votes are only created as part of block creation).
-     * @principle Secures votes as subcollections of blocks, with public read access but restricted writes.
-     */
-    match /blocks/{blockId}/votes/{voteId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Manages blockchain blocks, containing vote data.
-     * @path /blocks/{blockId}
-     * @allow (get, list) Any signed-in user can read the blocks and list the block collection.
-     * @deny (create, update, delete) No one can create, update, or delete blocks (only backend processes can).
-     * @principle Secures blocks with public read access but restricted writes.
-     */
+    // Blocks are publicly readable.
+    // Writes to blocks (and their votes subcollection) are handled
+    // through server actions, so direct client creation is denied.
     match /blocks/{blockId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create, update, delete: if false;
+
+      // Votes within a block are also publicly readable.
+      match /votes/{voteId} {
+        allow get, list: if true;
+        allow create, update, delete: if false;
+      }
     }
 
-    /**
-     * @description Manages records of suspicious voting activity.
-     * @path /fraudulent_activities/{fraudulentActivityId}
-     * @allow (create) No one can create fraudulent activity records (only backend processes).
-     * @deny (get, list, update, delete) No one can read, list, update, or delete fraudulent activity records.
-     * @principle Restricts access to fraudulent activity records.
-     */
+    // Fraudulent activity logs are write-only by the backend.
+    // No client should be able to read or write these directly.
     match /fraudulent_activities/{fraudulentActivityId} {
-      allow get, list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow read, write: if false;
     }
 
     function isSignedIn() {

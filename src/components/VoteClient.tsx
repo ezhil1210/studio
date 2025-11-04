@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -21,23 +22,23 @@ export function VoteClient() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [candidateImages, setCandidateImages] = useState<Record<string, ImagePlaceholder>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasVoted, setHasVoted] = useState<boolean | null>(false);
+  const [hasVoted, setHasVoted] = useState(false);
   const [checkingVoteStatus, setCheckingVoteStatus] = useState(true);
   const { toast } = useToast();
   
   const { user, isUserLoading } = useAuth();
 
   useEffect(() => {
-    if (user) {
+    // Only check voter status if we have a user and we're not already checking
+    if (user && !isUserLoading) {
       setCheckingVoteStatus(true);
       getVoterStatus(user.uid).then(status => {
           setHasVoted(status.hasVoted);
           setCheckingVoteStatus(false);
       });
-    } else if (!isUserLoading) {
-        // If there's no user and we're not loading, they are logged out.
-        // In demo mode, the provider handles login, so we just wait.
-        setCheckingVoteStatus(false);
+    } else if (!user && !isUserLoading) {
+      // If there's no user and we are done loading, stop checking
+      setCheckingVoteStatus(false);
     }
   }, [user, isUserLoading]);
   
@@ -90,10 +91,12 @@ export function VoteClient() {
     setIsSubmitting(false);
   };
   
+  // Show a loading spinner while the user state is being determined or vote status is being checked
   if (isUserLoading || checkingVoteStatus) {
     return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
+  // Once loading is complete, show the voted status or the voting options
   if (hasVoted) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)]">

@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { runFraudAnalysis } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,9 +23,13 @@ export default function FraudDetectionPage() {
     setAnalysisResult(null);
     try {
       const result = await runFraudAnalysis();
-      setAnalysisResult(result);
-    } catch (e) {
-      setError("An unexpected error occurred during analysis.");
+      if ('success' in result && !result.success) {
+        setError(result.error || "An unexpected error occurred during analysis.");
+      } else if (!('success' in result)) {
+        setAnalysisResult(result as FraudAnalysisOutput);
+      }
+    } catch (e: any) {
+      setError(e.message || "An unexpected error occurred during analysis.");
       console.error(e);
     }
     setIsLoading(false);

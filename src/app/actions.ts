@@ -1,10 +1,7 @@
 
 "use server";
 
-import {
-  signOut,
-} from "firebase/auth";
-import { LoginSchema } from "@/lib/schemas";
+import { signOut } from "firebase/auth";
 import {
   collection,
   doc,
@@ -25,14 +22,10 @@ import { revalidatePath } from "next/cache";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from 'firebase/auth';
-import { FirestorePermissionError } from "@/firebase/errors";
-import { signInAnonymously } from "firebase/auth";
-
 
 type ActionResult = {
   success: boolean;
   error?: string;
-  uid?: string;
 };
 
 // Server-side Firebase initialization
@@ -52,17 +45,6 @@ function getDb() {
 }
 
 // --- AUTH ACTIONS ---
-
-export async function loginUser(values: LoginSchema): Promise<ActionResult> {
-  try {
-    const auth = getFirebaseAuth();
-    // Use anonymous sign-in instead
-    const userCredential = await signInAnonymously(auth);
-    return { success: true, uid: userCredential.user.uid };
-  } catch (error: any) {
-    return { success: false, error: "Anonymous sign-in failed." };
-  }
-}
 
 export async function logoutUser(): Promise<ActionResult> {
   try {
@@ -84,14 +66,15 @@ export async function getVoterStatus(uid: string): Promise<{ hasVoted: boolean }
   }
   const db = getDb();
   
-  const blocksSnapshot = await getDocs(collection(db, "blocks"));
-  for (const blockDoc of blocksSnapshot.docs) {
-    const votesColRef = collection(db, `blocks/${blockDoc.id}/votes`);
-    const voteQuery = query(votesColRef, where("voterId", "==", uid), limit(1));
-    const voteSnapshot = await getDocs(voteQuery);
-    if (!voteSnapshot.empty) {
-      return { hasVoted: true };
-    }
+  // This is a more efficient way to check if a user has voted across all blocks.
+  const allVotesQuery = query(collection(db, "blocks"), where('voterIds', 'array-contains', uid));
+  const querySnapshot = await getDocs(allVotesQuery);
+
+  // We only need to check if any block contains the user's ID.
+  const blocksVotedIn = querySnapshot.docs.map(doc => doc.data().voteIds).flat();
+
+  if (blocksVotedIn.includes(uid)) {
+    return { hasVoted: true };
   }
 
   return { hasVoted: false };
@@ -112,12 +95,13 @@ export async function castVote({
   const db = getDb();
   
   try {
-    const voterDocRef = doc(db, "voters", uid);
     const { hasVoted } = await getVoterStatus(uid);
     if (hasVoted) {
         return { success: false, error: "You have already voted." };
     }
     
+    // Ensure a voter profile exists for anonymous users before proceeding
+    const voterDocRef = doc(db, "voters", uid);
     const voterDoc = await getDoc(voterDocRef);
     if (!voterDoc.exists()) {
       await setDoc(voterDocRef, {
@@ -154,6 +138,7 @@ export async function castVote({
       timestamp: newVote.timestamp,
       previousBlockHash: previousBlockHash,
       voteIds: [newVote.id],
+      voterIds: [uid], // Add voterId to the block for efficient querying
       hash: ''
     };
 
@@ -161,7 +146,8 @@ export async function castVote({
         id: newBlockData.id,
         timestamp: newBlockData.timestamp,
         previousBlockHash: newBlockData.previousBlockHash,
-        voteIds: newBlockData.voteIds
+        voteIds: newBlockData.voteIds,
+        voterIds: newBlockData.voterIds,
     };
     newBlockData.hash = createHash('sha256').update(JSON.stringify(blockContentForHashing)).digest('hex');
 
@@ -175,6 +161,7 @@ export async function castVote({
 
     await batch.commit();
 
+    // Revalidate paths to ensure UI updates after voting
     revalidatePath("/vote");
     revalidatePath("/results");
     revalidatePath("/blockchain");
@@ -227,6 +214,7 @@ type Block = {
     previousBlockHash: string;
     hash: string;
     voteIds: string[];
+    voterIds: string[];
     votes: Vote[];
 };
 
@@ -250,6 +238,7 @@ export async function getBlockchainData(): Promise<Block[]> {
             previousBlockHash: blockData.previousBlockHash,
             hash: blockData.hash,
             voteIds: blockData.voteIds,
+            voterIds: blockData.voterIds || [],
             votes: votes,
         });
     }
@@ -259,7 +248,7 @@ export async function getBlockchainData(): Promise<Block[]> {
 
 
 // --- AI ACTION ---
-export async function runFraudAnalysis() {
+export async function runFraudAnalysis(): Promise<FraudAnalysisOutput | { success: false, error: string }> {
   try {
     const blockchainData = await getBlockchainData();
 
@@ -302,9 +291,12 @@ export async function runFraudAnalysis() {
     return analysis;
   } catch (error: any) {
       if (error.code === 'permission-denied') {
+          console.error("Firestore Permission Denied on fraud analysis:", error.message);
           return { success: false, error: "You do not have permission to run fraud analysis." };
       }
-      // Re-throw other errors
-      throw error;
+      console.error("Fraud analysis error:", error);
+      // Re-throw other errors to be caught by the client
+      throw new Error("An unexpected error occurred during fraud analysis.");
   }
 }
+type FraudAnalysisOutput = import('@/ai/flows/analyze-voting-patterns-for-fraud').FraudAnalysisOutput;
