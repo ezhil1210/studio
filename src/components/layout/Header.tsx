@@ -61,20 +61,20 @@ export default function Header() {
           )}
         </div>
 
-        <div className="md:hidden">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={!user}>
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <Link href="/" className="mr-6 flex items-center space-x-2 mb-6">
-                <Vote className="h-6 w-6 text-primary" />
-                <span className="font-bold font-headline">eVoteChain</span>
-              </Link>
-              {user && (
+        {user && (
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left">
+                <Link href="/" className="mr-6 flex items-center space-x-2 mb-6">
+                  <Vote className="h-6 w-6 text-primary" />
+                  <span className="font-bold font-headline">eVoteChain</span>
+                </Link>
                 <nav className="flex flex-col space-y-4">
                   {navLinks.map((link) => (
                     <Link
@@ -86,10 +86,10 @@ export default function Header() {
                     </Link>
                   ))}
                 </nav>
-              )}
-            </SheetContent>
-          </Sheet>
-        </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+        )}
 
         <div className="flex flex-1 items-center justify-end space-x-2">
           {isUserLoading ? (
