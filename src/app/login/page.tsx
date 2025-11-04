@@ -19,7 +19,8 @@ export default function LoginPage() {
   const { user, isUserLoading } = useAuth();
 
   useEffect(() => {
-    // If the user is already logged in, redirect them away from the login page.
+    // If auth is not loading and a user exists, they are already logged in.
+    // Redirect them away from the login page to the main application.
     if (!isUserLoading && user) {
       router.push("/vote");
     }
@@ -33,7 +34,7 @@ export default function LoginPage() {
         title: "Welcome, Demo User!",
         description: "You are now logged in anonymously.",
       });
-      // The useEffect will handle the redirect after state update.
+      // The useEffect will handle the redirect after the auth state updates.
       router.refresh();
     } else {
       toast({
@@ -46,21 +47,22 @@ export default function LoginPage() {
   };
 
   // While checking the auth state, show a full-page loader.
+  // This prevents a flash of the login form before the redirect check.
   if (isUserLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+      <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
   
-  // If the user is not logged in, show the login form.
+  // If the user is not logged in (and we're done loading), show the login form.
   if (!user) {
     return (
-      <div className="container flex items-center justify-center min-h-[calc(100vh-8rem)] p-4">
+      <div className="container flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-sm border-0 shadow-lg sm:border">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
             <CardDescription>
               Log in to cast your vote and see the results.
             </CardDescription>
@@ -103,7 +105,7 @@ export default function LoginPage() {
   // If the user is logged in, the useEffect is about to redirect them. 
   // In the meantime, show a loader to prevent a flash of the login page.
   return (
-     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+     <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
   );
