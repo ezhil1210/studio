@@ -2,43 +2,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Voters can be created during registration.
-    // They can only read/update their own data.
-    match /voters/{voterId} {
-      allow create: if isSignedIn();
-      allow get, update: if isSignedIn() && isOwner(voterId);
-      allow list, delete: if false;
-    }
-
-    // Blocks and votes are publicly readable.
-    // Logged-in users can create new blocks and votes.
-    // Updates and deletes are disallowed to maintain the chain's integrity.
-    match /blocks/{blockId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-
-      // Votes within a block follow similar rules.
-      match /votes/{voteId} {
-        allow get, list: if true;
-        allow create: if isSignedIn();
-        allow update, delete: if false;
-      }
-    }
-
-    // Fraudulent activity logs are write-only by the backend (or authorized admin).
-    // For this app, we'll keep them locked down.
-    match /fraudulent_activities/{fraudulentActivityId} {
-      allow read, write: if false;
-    }
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    // Allow read/write access to all documents
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
