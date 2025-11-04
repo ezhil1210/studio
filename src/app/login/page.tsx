@@ -4,7 +4,6 @@
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { demoLogin } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -20,7 +19,7 @@ export default function LoginPage() {
   const { user, isUserLoading } = useAuth();
 
   useEffect(() => {
-    // If user is already logged in, redirect them to the vote page
+    // If the user is already logged in, redirect them away from the login page.
     if (!isUserLoading && user) {
       router.push("/vote");
     }
@@ -34,7 +33,7 @@ export default function LoginPage() {
         title: "Welcome, Demo User!",
         description: "You are now logged in anonymously.",
       });
-      // The useEffect will handle the redirect
+      // The useEffect will handle the redirect after state update.
       router.refresh();
     } else {
       toast({
@@ -46,7 +45,7 @@ export default function LoginPage() {
     }
   };
 
-  // While checking auth state, show a loader.
+  // While checking the auth state, show a full-page loader.
   if (isUserLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
@@ -55,7 +54,7 @@ export default function LoginPage() {
     );
   }
   
-  // If user is not loading and is not logged in, show the login page
+  // If the user is not logged in, show the login form.
   if (!user) {
     return (
       <div className="container flex items-center justify-center min-h-[calc(100vh-8rem)] p-4">
@@ -101,10 +100,12 @@ export default function LoginPage() {
     );
   }
 
-  // If user is logged in, the useEffect will redirect, in the meantime show a loader.
+  // If the user is logged in, the useEffect is about to redirect them. 
+  // In the meantime, show a loader to prevent a flash of the login page.
   return (
      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
   );
 }
+
