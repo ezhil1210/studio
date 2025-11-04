@@ -1,6 +1,7 @@
 
 'use client';
 
+import React from 'react';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
@@ -70,8 +71,8 @@ export default function BlockchainPage() {
       ) : (
         <div className="flex flex-col items-center space-y-4">
           {blockchain.map((block, index) => (
-            <>
-              <Card key={block.id} className="w-full max-w-2xl shadow-md transition-shadow hover:shadow-xl">
+            <React.Fragment key={block.id}>
+              <Card className="w-full max-w-2xl shadow-md transition-shadow hover:shadow-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Block #{blockchain.length - 1 - index}</span>
@@ -107,7 +108,7 @@ export default function BlockchainPage() {
                 </CardContent>
               </Card>
               {index < blockchain.length - 1 && <div className="h-8 w-1 bg-border rounded-full" />}
-            </>
+            </React.Fragment>
           ))}
         </div>
       )}
