@@ -138,12 +138,6 @@ export async function castVote({
   const db = getDb();
 
   try {
-    // This check is now bypassed in the client, but remains as a server-side safeguard.
-    const { hasVoted } = await getVoterStatus(uid);
-    if (hasVoted) {
-      return { success: false, error: "You have already voted." };
-    }
-
     const lastBlockQuery = query(
       collection(db, "blocks"),
       orderBy("timestamp", "desc"),
