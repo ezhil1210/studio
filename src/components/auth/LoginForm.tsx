@@ -42,7 +42,7 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      router.refresh(); 
+      router.push('/vote');
     } else {
       toast({
         variant: "destructive",

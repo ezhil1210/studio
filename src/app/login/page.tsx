@@ -32,28 +32,19 @@ export default function LoginPage() {
         title: "Welcome, Demo User!",
         description: "You are now logged in anonymously.",
       });
-      router.refresh();
+      router.push('/vote');
     } else {
       toast({
         variant: "destructive",
         title: "Demo Login Failed",
         description: result.error,
       });
+      setIsDemoLoading(false);
     }
-    setIsDemoLoading(false);
+    // No need to set isDemoLoading to false on success, as redirection will unmount the component
   };
 
-  if (isUserLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] w-full">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
-  // If user is already logged in, the useEffect will trigger a redirect.
-  // We can show a loader while that happens.
-  if (user) {
+  if (isUserLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

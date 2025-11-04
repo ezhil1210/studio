@@ -45,6 +45,7 @@ export function RegisterForm() {
         title: "Registration Successful",
         description: "Please login to continue.",
       });
+      router.push('/login');
     } else {
       toast({
         variant: "destructive",
