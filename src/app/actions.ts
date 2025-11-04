@@ -88,7 +88,6 @@ export async function loginUser(values: LoginSchema): Promise<ActionResult> {
   try {
     const auth = getFirebaseAuth();
     await signInWithEmailAndPassword(auth, values.email, values.password);
-    // Removed revalidatePath, client will handle navigation
     return { success: true };
   } catch (error: any) {
     return { success: false, error: "Invalid email or password." };

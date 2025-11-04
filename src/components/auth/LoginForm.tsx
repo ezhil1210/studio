@@ -42,8 +42,8 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      // This ensures the client is aware of the auth change before navigating
-      router.refresh();
+      // The onAuthStateChanged listener will handle the auth state update.
+      // We just need to navigate to the desired page.
       router.push("/vote");
     } else {
       toast({
