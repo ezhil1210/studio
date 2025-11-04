@@ -11,17 +11,19 @@ service cloud.firestore {
       allow list, delete: if false;
     }
 
-    // Blocks are publicly readable.
-    // Writes to blocks (and their votes subcollection) are handled
-    // through server actions, so direct client creation is denied.
+    // Blocks and votes are publicly readable.
+    // Logged-in users can create new blocks and votes.
+    // Updates and deletes are disallowed to maintain the chain's integrity.
     match /blocks/{blockId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
 
-      // Votes within a block are also publicly readable.
+      // Votes within a block follow similar rules.
       match /votes/{voteId} {
         allow get, list: if true;
-        allow create, update, delete: if false;
+        allow create: if isSignedIn();
+        allow update, delete: if false;
       }
     }
 
