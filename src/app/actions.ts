@@ -3,6 +3,7 @@
 
 import {
   createUserWithEmailAndPassword,
+  signInAnonymously,
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
@@ -32,6 +33,7 @@ import { getAuth } from 'firebase/auth';
 type ActionResult = {
   success: boolean;
   error?: string;
+  uid?: string;
 };
 
 // Server-side Firebase initialization
@@ -87,10 +89,11 @@ export async function registerUser(
 export async function loginUser(values: LoginSchema): Promise<ActionResult> {
   try {
     const auth = getFirebaseAuth();
-    await signInWithEmailAndPassword(auth, values.email, values.password);
-    return { success: true };
+    // Use anonymous sign-in instead
+    const userCredential = await signInAnonymously(auth);
+    return { success: true, uid: userCredential.user.uid };
   } catch (error: any) {
-    return { success: false, error: "Invalid email or password." };
+    return { success: false, error: "Anonymous sign-in failed." };
   }
 }
 
@@ -146,9 +149,17 @@ export async function castVote({
   const voterDocRef = doc(db, "voters", uid);
   const blocksColRef = collection(db, "blocks");
 
+  // For anonymous users, we skip the voter check or create a temporary one
   const voterDoc = await getDoc(voterDocRef);
   if (!voterDoc.exists()) {
-    return { success: false, error: "Voter not found." };
+    // Create a dummy voter profile for anonymous user if it doesn't exist
+    await setDoc(voterDocRef, {
+      id: uid,
+      name: "Anonymous Voter",
+      email: `anon-${uid}@example.com`,
+      hashedVoterId: createHash("sha256").update(uid).digest("hex"),
+      registrationDate: Timestamp.now().toDate().toISOString()
+    });
   }
   
   const { hasVoted } = await getVoterStatus(uid);

@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 export const registerSchema = z.object({
@@ -15,8 +16,8 @@ export type RegisterSchema = z.infer<typeof registerSchema>;
 
 
 export const loginSchema = z.object({
-    email: z.string().email({ message: "Please enter a valid email address." }),
-    password: z.string().min(1, { message: "Password is required." }),
+    email: z.string().email({ message: "Please enter a valid email address." }).optional(),
+    password: z.string().optional(),
 });
 
 export type LoginSchema = z.infer<typeof loginSchema>;

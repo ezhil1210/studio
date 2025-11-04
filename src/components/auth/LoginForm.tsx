@@ -30,13 +30,11 @@ export function LoginForm() {
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: "anonymous@example.com", // Prefill for simplicity
+      password: "", // Not used for anonymous login
     },
   });
 
-  // This effect will run when the user state changes.
-  // If the user becomes authenticated, we redirect to the vote page.
   useEffect(() => {
     if (user) {
       router.push("/vote");
@@ -51,13 +49,9 @@ export function LoginForm() {
     if (result.success) {
       toast({
         title: "Login Successful",
-        description: "Welcome back! Redirecting...",
+        description: "Welcome! Redirecting...",
       });
-      // Refresh the current route. This allows the onAuthStateChanged listener
-      // to pick up the new user and update the `useAuth` hook state.
-      // The useEffect above will then handle the redirection.
       router.refresh();
-
     } else {
       toast({
         variant: "destructive",
@@ -78,27 +72,14 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input placeholder="name@example.com" {...field} disabled />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Login"}
+          {isSubmitting ? <Loader2 className="animate-spin" /> : "Login Anonymously"}
         </Button>
       </form>
     </Form>
