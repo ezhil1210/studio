@@ -74,17 +74,19 @@ export default function Header() {
                 <Vote className="h-6 w-6 text-primary" />
                 <span className="font-bold font-headline">eVoteChain</span>
               </Link>
-              <nav className="flex flex-col space-y-4">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="transition-colors hover:text-foreground/80 text-foreground/60"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
+              {user && (
+                <nav className="flex flex-col space-y-4">
+                  {navLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="transition-colors hover:text-foreground/80 text-foreground/60"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              )}
             </SheetContent>
           </Sheet>
         </div>
