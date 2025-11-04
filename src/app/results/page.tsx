@@ -45,7 +45,7 @@ export default function ResultsPage() {
 
   if (isUserLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -58,7 +58,7 @@ export default function ResultsPage() {
   const totalVotes = chartData.reduce((sum, item) => sum + item.votes, 0);
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
+    <div className="container mx-auto p-4 md:p-8 w-full">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold font-headline">
           Live Election Results
@@ -68,13 +68,13 @@ export default function ResultsPage() {
         </p>
       </div>
 
-      <Card className="w-full max-w-4xl mx-auto shadow-lg">
+      <Card className="w-full max-w-4xl mx-auto shadow-xl bg-card/80 backdrop-blur-sm border-0">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl">Vote Tally</CardTitle>
               <CardDescription>
-                Total Votes Cast: {totalVotes}
+                Total Votes Cast: <span className="font-bold text-foreground">{totalVotes}</span>
               </CardDescription>
             </div>
             <BarChart className="h-8 w-8 text-muted-foreground" />
@@ -89,11 +89,11 @@ export default function ResultsPage() {
           ) : totalVotes > 0 ? (
             <ResultsChart data={chartData} />
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
+             <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed rounded-lg">
               <p className="text-lg font-medium">
                 No votes have been cast yet.
               </p>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mt-2">
                 Check back soon to see the results.
               </p>
             </div>

@@ -39,7 +39,7 @@ export default function BlockchainPage() {
 
   if (isUserLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
+      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -47,14 +47,14 @@ export default function BlockchainPage() {
   
   if (isLoadingBlockchain) {
      return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
+      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
+    <div className="container mx-auto p-4 md:p-8 w-full">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold font-headline">Blockchain Ledger</h1>
         <p className="text-muted-foreground mt-2">
@@ -63,7 +63,7 @@ export default function BlockchainPage() {
       </div>
 
       {!blockchain || blockchain.length === 0 ? (
-        <Card className="w-full max-w-2xl mx-auto text-center py-12">
+        <Card className="w-full max-w-2xl mx-auto text-center py-12 shadow-lg bg-card/80 backdrop-blur-sm border-0">
           <CardHeader>
             <div className="mx-auto bg-muted rounded-full p-4 w-fit">
               <Blocks className="h-12 w-12 text-muted-foreground" />
@@ -79,8 +79,8 @@ export default function BlockchainPage() {
       ) : (
         <div className="flex flex-col items-center space-y-4">
           {blockchain.map((block, index) => (
-            <div key={block.id} className="contents">
-              <Card className="w-full max-w-2xl shadow-md transition-shadow hover:shadow-xl">
+            <React.Fragment key={block.id}>
+              <Card className="w-full max-w-2xl shadow-md transition-shadow hover:shadow-xl bg-card/80 backdrop-blur-sm border-0">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Block #{blockchain.length - 1 - index}</span>
@@ -116,7 +116,7 @@ export default function BlockchainPage() {
                 </CardContent>
               </Card>
               {index < blockchain.length - 1 && <div className="h-8 w-1 bg-border rounded-full" />}
-            </div>
+            </React.Fragment>
           ))}
         </div>
       )}
