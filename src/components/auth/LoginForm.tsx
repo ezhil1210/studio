@@ -43,7 +43,6 @@ export function LoginForm() {
         description: "Welcome back!",
       });
       router.push("/vote");
-      router.refresh(); // Force a refresh to update auth state across the app
     } else {
       toast({
         variant: "destructive",

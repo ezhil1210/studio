@@ -5,7 +5,6 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  getAuth,
 } from "firebase/auth";
 import { LoginSchema, RegisterSchema } from "@/lib/schemas";
 import {
@@ -27,6 +26,7 @@ import { analyzeVotingPatterns } from "@/ai/flows/analyze-voting-patterns-for-fr
 import { revalidatePath } from "next/cache";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
+import { getAuth } from 'firebase/auth';
 
 
 type ActionResult = {
@@ -88,6 +88,7 @@ export async function loginUser(values: LoginSchema): Promise<ActionResult> {
   try {
     const auth = getFirebaseAuth();
     await signInWithEmailAndPassword(auth, values.email, values.password);
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error: any) {
     return { success: false, error: "Invalid email or password." };
@@ -98,6 +99,7 @@ export async function logoutUser(): Promise<ActionResult> {
   try {
     const auth = getFirebaseAuth();
     await signOut(auth);
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
