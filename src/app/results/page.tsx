@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { BarChart, Loader2 } from 'lucide-react';
-import { onSnapshot, collection, query, getFirestore } from 'firebase/firestore';
+import { onSnapshot, collection, query } from 'firebase/firestore';
 import { useFirestore as useFirebaseFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 

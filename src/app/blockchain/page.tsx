@@ -45,18 +45,10 @@ export default function BlockchainPage() {
 
   const { data: blockchain, isLoading: isLoadingBlockchain } = useCollection<Block>(blocksQuery);
 
-  if (isUserLoading || isLoadingBlockchain) {
+  if (isUserLoading || isLoadingBlockchain || !user) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!user) {
-     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
