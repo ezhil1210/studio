@@ -80,7 +80,7 @@ export function VoteClient() {
       toast({
         variant: "destructive",
         title: "Voting Failed",
-        description: result.error,
+        description: result.error || "An unknown error occurred.",
       });
       // If the error is that they already voted, update the UI state
       if (result.error === "You have already voted.") {

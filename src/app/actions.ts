@@ -4,7 +4,7 @@
 import {
   signOut,
 } from "firebase/auth";
-import { LoginSchema, RegisterSchema } from "@/lib/schemas";
+import { LoginSchema } from "@/lib/schemas";
 import {
   collection,
   doc,
@@ -26,7 +26,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from 'firebase/auth';
 import { FirestorePermissionError } from "@/firebase/errors";
-import { User, signInAnonymously } from "firebase/auth/web-extension";
+import { signInAnonymously } from "firebase/auth";
 
 
 type ActionResult = {
@@ -182,15 +182,8 @@ export async function castVote({
     return { success: true };
   } catch (error: any) {
     if (error.code === 'permission-denied') {
-        // This is where we create the detailed error.
-        // We can't know exactly which operation in the batch failed,
-        // so we report on the general action of "casting a vote".
-        const permissionError = new FirestorePermissionError({
-          path: `(batch operation involving blocks and votes)`,
-          operation: 'write', 
-        });
-        // Re-throw the rich error to be caught by the UI
-        throw permissionError;
+        console.error("Firestore Permission Denied:", error.message);
+        return { success: false, error: "You do not have permission to cast a vote." };
     }
     console.error("Vote casting error:", error);
     return { success: false, error: "Could not cast vote. Please try again." };
@@ -309,11 +302,7 @@ export async function runFraudAnalysis() {
     return analysis;
   } catch (error: any) {
       if (error.code === 'permission-denied') {
-          const permissionError = new FirestorePermissionError({
-            path: `/fraudulent_activities`,
-            operation: 'create',
-          });
-          throw permissionError;
+          return { success: false, error: "You do not have permission to run fraud analysis." };
       }
       // Re-throw other errors
       throw error;
