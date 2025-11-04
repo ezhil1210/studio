@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { cn } from "@/lib/utils";
 import { castVote } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, CheckCircle, Vote, Star, Heart, Triangle } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { Loader2, ShieldCheck, CheckCircle, Star, Heart, Triangle } from "lucide-react";
+import { useUserContext } from "@/context/UserContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -25,16 +25,8 @@ export function VoteClient() {
   const { toast } = useToast();
   const router = useRouter();
   
-  const { user, isUserLoading } = useAuth();
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      // This logic is currently disabled based on user request.
-      // router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
+  const { user, isLoading: isUserLoading } = useUserContext();
   
-
   const handleVote = async () => {
     if (!selectedCandidate) {
       toast({

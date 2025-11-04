@@ -6,7 +6,9 @@ import { useCollection } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { useFirestore, useAuth } from '@/firebase';
+import { useFirestore } from '@/firebase';
+import { useUserContext } from '@/context/UserContext';
+
 
 type Vote = {
   id: string;
@@ -28,7 +30,7 @@ type Block = {
 
 export default function BlockchainPage() {
   const firestore = useFirestore();
-  const { isUserLoading } = useAuth();
+  const { isLoading: isUserLoading } = useUserContext();
 
   const blocksQuery = useMemo(() => {
     if (!firestore) return null;

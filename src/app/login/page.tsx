@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,15 +9,20 @@ import { demoLogin } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useUserContext } from "@/context/UserContext";
 
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isDemoLoading, setIsDemoLoading] = useState(false);
-  const { user, isUserLoading } = useAuth();
+  const { user, isLoading: isUserLoading } = useUserContext();
+
+  useEffect(() => {
+    if (user) {
+      router.push('/vote');
+    }
+  }, [user, router]);
 
   const handleDemoLogin = async () => {
     setIsDemoLoading(true);
@@ -39,12 +45,22 @@ export default function LoginPage() {
 
   if (isUserLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen w-full">
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
   
+  // If user is already logged in, the useEffect will trigger a redirect.
+  // We can show a loader while that happens.
+  if (user) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] w-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4 w-full">
       <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:6rem_4rem]">

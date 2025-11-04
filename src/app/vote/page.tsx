@@ -2,13 +2,13 @@
 'use client';
 
 import { VoteClient } from "@/components/VoteClient";
-import { useAuth } from "@/hooks/use-auth";
+import { useUserContext } from "@/context/UserContext";
 import { Loader2 } from "lucide-react";
 
 export default function VotePage() {
-  const { user, isUserLoading } = useAuth();
+  const { user, isLoading } = useUserContext();
 
-  if (isUserLoading) {
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

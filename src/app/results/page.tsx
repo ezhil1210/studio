@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getVoteResults } from '@/app/actions';
 import { ResultsChart } from '@/components/ResultsChart';
 import {
   Card,
@@ -12,8 +11,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { BarChart, Loader2 } from 'lucide-react';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { useFirestore, useAuth, useCollection } from '@/firebase';
+import { collection, query, getDocs } from 'firebase/firestore';
+import { useFirestore, useCollection } from '@/firebase';
+import { useUserContext } from '@/context/UserContext';
+
 
 type ChartData = { name: string; votes: number }[];
 
@@ -29,7 +30,7 @@ type Block = {
 export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, number> | null>(null);
   const firestore = useFirestore();
-  const { isUserLoading } = useAuth();
+  const { isLoading: isUserLoading } = useUserContext();
   
   const blocksQuery = useMemo(() => {
     if (!firestore) return null;

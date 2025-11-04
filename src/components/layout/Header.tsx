@@ -14,9 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, Vote, Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { useUserContext } from "@/context/UserContext";
 import { logoutUser } from "@/app/actions";
-import { useRouter } from "next/navigation";
 
 const navLinks = [
   { href: "/vote", label: "Vote" },
@@ -25,8 +24,7 @@ const navLinks = [
 ];
 
 export default function Header() {
-  const { user, isUserLoading } = useAuth();
-  const router = useRouter();
+  const { user, isLoading } = useUserContext();
 
   const handleLogout = async () => {
     await logoutUser();
@@ -91,7 +89,7 @@ export default function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-          {isUserLoading ? (
+          {isLoading ? (
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           ) : user ? (
             <DropdownMenu>
