@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/toaster';
-import { FirebaseClientProvider } from '@/firebase';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'eVoteChain',
@@ -30,7 +30,7 @@ export default function RootLayout({
           <div className="relative flex min-h-screen w-full flex-col bg-background">
             <Header />
             <main className="flex flex-1 flex-col items-center">
-              <div className="container w-full flex-1">{children}</div>
+              {children}
             </main>
           </div>
           <Toaster />
