@@ -13,6 +13,7 @@ import {
 import { BarChart, Loader2 } from 'lucide-react';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { useFirestore, useCollection, useUser } from '@/firebase';
+import ManualHeader from '@/components/layout/ManualHeader';
 
 
 type ChartData = { name: string; votes: number }[];
@@ -29,7 +30,6 @@ type Block = {
 export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, number> | null>(null);
   const firestore = useFirestore();
-  const { isUserLoading } = useUser();
   
   const blocksQuery = useMemo(() => {
     if (!firestore) return null;
@@ -68,14 +68,6 @@ export default function ResultsPage() {
     aggregateResults();
   }, [blocks, firestore]);
 
-  if (isUserLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center w-full">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   const isLoading = results === null || isLoadingBlocks;
   const chartData: ChartData = results
     ? Object.entries(results).map(([name, votes]) => ({ name, votes }))
@@ -83,48 +75,51 @@ export default function ResultsPage() {
   const totalVotes = chartData.reduce((sum, item) => sum + item.votes, 0);
 
   return (
-    <div className="p-4 md:p-8 w-full max-w-7xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold font-headline">
-          Live Election Results
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          The results are updated in real-time as votes are recorded on the blockchain.
-        </p>
-      </div>
+    <>
+      <ManualHeader />
+      <div className="p-4 md:p-8 w-full max-w-7xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold font-headline">
+            Live Election Results
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            The results are updated in real-time as votes are recorded on the blockchain.
+          </p>
+        </div>
 
-      <Card className="w-full max-w-4xl mx-auto shadow-xl bg-card/80 backdrop-blur-sm border-0">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">Vote Tally</CardTitle>
-              <CardDescription>
-                Total Votes Cast: <span className="font-bold text-foreground">{totalVotes}</span>
-              </CardDescription>
+        <Card className="w-full max-w-4xl mx-auto shadow-xl bg-card/80 backdrop-blur-sm border-0">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl">Vote Tally</CardTitle>
+                <CardDescription>
+                  Total Votes Cast: <span className="font-bold text-foreground">{totalVotes}</span>
+                </CardDescription>
+              </div>
+              <BarChart className="h-8 w-8 text-muted-foreground" />
             </div>
-            <BarChart className="h-8 w-8 text-muted-foreground" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-96 text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-              <p className="text-lg font-medium">Loading Initial Results...</p>
-            </div>
-          ) : totalVotes > 0 ? (
-            <ResultsChart data={chartData} />
-          ) : (
-             <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed rounded-lg">
-              <p className="text-lg font-medium">
-                No votes have been cast yet.
-              </p>
-              <p className="text-muted-foreground mt-2">
-                Check back soon to see the results.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-96 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">Loading Initial Results...</p>
+              </div>
+            ) : totalVotes > 0 ? (
+              <ResultsChart data={chartData} />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed rounded-lg">
+                <p className="text-lg font-medium">
+                  No votes have been cast yet.
+                </p>
+                <p className="text-muted-foreground mt-2">
+                  Check back soon to see the results.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 }

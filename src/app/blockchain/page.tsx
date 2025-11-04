@@ -6,6 +6,7 @@ import { useCollection, useUser, useFirestore } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
+import ManualHeader from '@/components/layout/ManualHeader';
 
 
 type Vote = {
@@ -28,7 +29,6 @@ type Block = {
 
 export default function BlockchainPage() {
   const firestore = useFirestore();
-  const { isUserLoading } = useUser();
 
   const blocksQuery = useMemo(() => {
     if (!firestore) return null;
@@ -36,24 +36,21 @@ export default function BlockchainPage() {
   }, [firestore]);
 
   const { data: blockchain, isLoading: isLoadingBlockchain } = useCollection<Block>(blocksQuery);
-
-  if (isUserLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
   
   if (isLoadingBlockchain) {
      return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <>
+        <ManualHeader />
+        <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </>
     );
   }
 
   return (
+    <>
+    <ManualHeader />
     <div className="p-4 md:p-8 w-full max-w-7xl">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold font-headline">Blockchain Ledger</h1>
@@ -121,5 +118,6 @@ export default function BlockchainPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
