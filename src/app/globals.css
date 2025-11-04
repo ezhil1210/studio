@@ -1,30 +1,31 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 220 13% 97%; /* #ECEFF1 */
+    --background: 240 10% 98%;
     --foreground: 222 84% 5%;
     --card: 0 0% 100%;
     --card-foreground: 222 84% 5%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 84% 5%;
-    --primary: 231 44% 48%; /* #3F51B5 */
+    --primary: 260 65% 55%;
     --primary-foreground: 0 0% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 207 90% 68%; /* #64B5F6 */
+    --accent: 340 85% 60%;
     --accent-foreground: 222 84% 5%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 231 44% 48%; /* #3F51B5 */
-    --chart-1: 231 44% 48%;
-    --chart-2: 207 90% 68%;
+    --ring: 260 65% 55%;
+    --chart-1: 260 65% 55%;
+    --chart-2: 340 85% 60%;
     --chart-3: 220 70% 50%;
     --chart-4: 160 60% 45%;
     --chart-5: 30 80% 55%;
@@ -38,21 +39,21 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 84% 5%;
     --popover-foreground: 210 40% 98%;
-    --primary: 207 90% 68%; /* Light Blue Accent for Dark Mode Primary */
+    --primary: 340 85% 60%;
     --primary-foreground: 222 84% 5%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 231 44% 48%; /* Deep Blue for Dark Mode Accent */
+    --accent: 260 65% 55%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 207 90% 68%;
+    --ring: 340 85% 60%;
     --chart-1: 210 40% 98%;
-    --chart-2: 207 90% 68%;
+    --chart-2: 340 85% 60%;
     --chart-3: 220 70% 50%;
     --chart-4: 160 60% 45%;
     --chart-5: 340 75% 55%;
