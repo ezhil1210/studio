@@ -2,9 +2,6 @@
 "use server";
 
 import {
-  createUserWithEmailAndPassword,
-  signInAnonymously,
-  signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
 import { LoginSchema, RegisterSchema } from "@/lib/schemas";
@@ -28,6 +25,8 @@ import { revalidatePath } from "next/cache";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from 'firebase/auth';
+import { FirestorePermissionError } from "@/firebase/errors";
+import { User, signInAnonymously } from "firebase/auth/web-extension";
 
 
 type ActionResult = {
@@ -53,38 +52,6 @@ function getDb() {
 }
 
 // --- AUTH ACTIONS ---
-
-export async function registerUser(
-  values: RegisterSchema
-): Promise<ActionResult> {
-  try {
-    const auth = getFirebaseAuth();
-    const db = getDb();
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      values.email,
-      values.password
-    );
-    const user = userCredential.user;
-
-    // Hash the voter ID for storage
-    const hashedVoterId = createHash("sha256")
-      .update(values.voterId)
-      .digest("hex");
-
-    await setDoc(doc(db, "voters", user.uid), {
-      id: user.uid,
-      name: values.name,
-      email: user.email,
-      hashedVoterId: hashedVoterId,
-      registrationDate: Timestamp.now().toDate().toISOString()
-    });
-
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
 
 export async function loginUser(values: LoginSchema): Promise<ActionResult> {
   try {
@@ -117,10 +84,6 @@ export async function getVoterStatus(uid: string): Promise<{ hasVoted: boolean }
   }
   const db = getDb();
   
-  // This check is inefficient and a primary cause of performance issues.
-  // A better schema would be a top-level `votes` collection with a queryable `voterId`
-  // or a `hasVoted` flag on the voter document itself.
-  // Given the current schema, we iterate, but this will be slow.
   const blocksSnapshot = await getDocs(collection(db, "blocks"));
   for (const blockDoc of blocksSnapshot.docs) {
     const votesColRef = collection(db, `blocks/${blockDoc.id}/votes`);
@@ -147,29 +110,25 @@ export async function castVote({
     return { success: false, error: "You must be logged in to vote." };
   }
   const db = getDb();
-  const voterDocRef = doc(db, "voters", uid);
   
-
-  const { hasVoted } = await getVoterStatus(uid);
-  if (hasVoted) {
-      return { success: false, error: "You have already voted." };
-  }
-  
-  const voterDoc = await getDoc(voterDocRef);
-  if (!voterDoc.exists()) {
-    // Create a dummy voter profile for anonymous user if it doesn't exist
-    await setDoc(voterDocRef, {
-      id: uid,
-      name: "Anonymous Voter",
-      email: `anon-${uid}@example.com`,
-      hashedVoterId: createHash("sha256").update(uid).digest("hex"),
-      registrationDate: Timestamp.now().toDate().toISOString()
-    });
-  }
-
-
   try {
-    // Get the last block in the chain to find previous hash
+    const voterDocRef = doc(db, "voters", uid);
+    const { hasVoted } = await getVoterStatus(uid);
+    if (hasVoted) {
+        return { success: false, error: "You have already voted." };
+    }
+    
+    const voterDoc = await getDoc(voterDocRef);
+    if (!voterDoc.exists()) {
+      await setDoc(voterDocRef, {
+        id: uid,
+        name: "Anonymous Voter",
+        email: `anon-${uid}@example.com`,
+        hashedVoterId: createHash("sha256").update(uid).digest("hex"),
+        registrationDate: Timestamp.now().toDate().toISOString()
+      });
+    }
+
     const lastBlockQuery = query(
       collection(db, "blocks"),
       orderBy("timestamp", "desc"),
@@ -185,7 +144,7 @@ export async function castVote({
     const newVote = {
       id: doc(collection(db, `blocks/${blockId}/votes`)).id,
       voterId: uid,
-      encryptedVoteData: candidate, // In a real scenario, this would be encrypted
+      encryptedVoteData: candidate, 
       timestamp: Timestamp.now().toDate().toISOString(),
       blockId: blockId,
     };
@@ -198,7 +157,6 @@ export async function castVote({
       hash: ''
     };
 
-    // Hash the new block's content
     const blockContentForHashing = {
         id: newBlockData.id,
         timestamp: newBlockData.timestamp,
@@ -207,27 +165,33 @@ export async function castVote({
     };
     newBlockData.hash = createHash('sha256').update(JSON.stringify(blockContentForHashing)).digest('hex');
 
-
-    // Use a batch write to ensure atomicity
     const batch = writeBatch(db);
 
-    // 1. Add new block to the blockchain
     const newBlockRef = doc(db, "blocks", newBlockData.id);
     batch.set(newBlockRef, newBlockData);
 
-    // 2. Add vote to the subcollection
     const newVoteRef = doc(db, `blocks/${newBlockData.id}/votes`, newVote.id);
     batch.set(newVoteRef, newVote);
 
     await batch.commit();
 
-    // Revalidate paths to show new data
     revalidatePath("/vote");
     revalidatePath("/results");
     revalidatePath("/blockchain");
 
     return { success: true };
   } catch (error: any) {
+    if (error.code === 'permission-denied') {
+        // This is where we create the detailed error.
+        // We can't know exactly which operation in the batch failed,
+        // so we report on the general action of "casting a vote".
+        const permissionError = new FirestorePermissionError({
+          path: `(batch operation involving blocks and votes)`,
+          operation: 'write', 
+        });
+        // Re-throw the rich error to be caught by the UI
+        throw permissionError;
+    }
     console.error("Vote casting error:", error);
     return { success: false, error: "Could not cast vote. Please try again." };
   }
@@ -303,6 +267,7 @@ export async function getBlockchainData(): Promise<Block[]> {
 
 // --- AI ACTION ---
 export async function runFraudAnalysis() {
+  try {
     const blockchainData = await getBlockchainData();
 
     if (blockchainData.length === 0) {
@@ -329,16 +294,28 @@ export async function runFraudAnalysis() {
       analysis.flaggedVoterIds.forEach(voterId => {
         const activityId = doc(collection(db, 'fraudulent_activities')).id;
         const fraudRef = doc(db, 'fraudulent_activities', activityId);
-        batch.set(fraudRef, {
+        const fraudData = {
           id: activityId,
           voterId: voterId,
           timestamp: Timestamp.now().toDate().toISOString(),
           description: analysis.explanation,
           confidenceScore: 0.9, // Example score
-        });
+        };
+        batch.set(fraudRef, fraudData);
       });
       await batch.commit();
     }
     
     return analysis;
+  } catch (error: any) {
+      if (error.code === 'permission-denied') {
+          const permissionError = new FirestorePermissionError({
+            path: `/fraudulent_activities`,
+            operation: 'create',
+          });
+          throw permissionError;
+      }
+      // Re-throw other errors
+      throw error;
+  }
 }
