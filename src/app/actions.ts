@@ -10,7 +10,6 @@ import {
   collection,
   doc,
   setDoc,
-  getDoc,
   getDocs,
   query,
   orderBy,
@@ -410,3 +409,5 @@ export async function seedSampleVotes(): Promise<ActionResult> {
         return { success: false, error: "Could not seed sample votes." };
     }
 }
+
+    
