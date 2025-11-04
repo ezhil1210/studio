@@ -46,10 +46,10 @@ export default function LoginPage() {
     }
   };
 
-  // While checking auth state, show a loader. But if a user is found, the useEffect will redirect.
+  // While checking auth state, show a loader.
   if (isUserLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -59,16 +59,25 @@ export default function LoginPage() {
   if (!user) {
     return (
       <div className="container flex items-center justify-center min-h-[calc(100vh-8rem)] p-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle className="text-2xl">Login</CardTitle>
+        <Card className="w-full max-w-sm border-0 shadow-lg sm:border">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Welcome Back</CardTitle>
             <CardDescription>
-              Enter your email below to login to your account.
+              Log in to cast your vote and see the results.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <LoginForm />
-            <Separator className="my-4" />
+            <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                    </span>
+                </div>
+            </div>
             <Button
               variant="outline"
               className="w-full"
@@ -78,11 +87,11 @@ export default function LoginPage() {
               {isDemoLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Continue as Demo User
+              Demo User
             </Button>
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
-              <Link href="/register" className="underline">
+              <Link href="/register" className="font-semibold text-primary hover:underline">
                 Register
               </Link>
             </div>
@@ -94,7 +103,7 @@ export default function LoginPage() {
 
   // If user is logged in, the useEffect will redirect, in the meantime show a loader.
   return (
-     <div className="flex items-center justify-center min-h-screen">
+     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
   );

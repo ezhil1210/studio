@@ -83,12 +83,17 @@ export function VoteClient() {
             <div className="mx-auto bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 rounded-full p-3 w-fit">
               <CheckCircle className="h-10 w-10" />
             </div>
-            <CardTitle className="text-2xl font-headline mt-4">Thank You for Voting</CardTitle>
+            <CardTitle className="text-2xl mt-4">Thank You for Voting</CardTitle>
           </CardHeader>
           <CardContent>
             <CardDescription className="text-lg">
               Your vote has been securely recorded on the blockchain.
             </CardDescription>
+            <div className="mt-6">
+              <Button asChild>
+                <Link href="/results">View Live Results</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -98,7 +103,7 @@ export function VoteClient() {
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold font-headline">Cast Your Vote</h1>
+        <h1 className="text-3xl md:text-4xl font-bold">Cast Your Vote</h1>
         <p className="text-muted-foreground mt-2">Select your preferred candidate and submit your vote.</p>
       </div>
 
@@ -109,7 +114,7 @@ export function VoteClient() {
               key={candidate.name}
               onClick={() => setSelectedCandidate(candidate.name)}
               className={cn(
-                "cursor-pointer transition-all duration-300 hover:shadow-xl",
+                "cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105",
                 selectedCandidate === candidate.name ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "shadow-md"
               )}
             >
@@ -117,8 +122,8 @@ export function VoteClient() {
                 <div className="relative aspect-square w-full flex items-center justify-center rounded-t-lg bg-card-foreground/5 dark:bg-card-foreground/10">
                   {candidate.icon}
                   {selectedCandidate === candidate.name && (
-                    <div className="absolute inset-0 bg-primary/70 flex items-center justify-center rounded-t-lg">
-                      <ShieldCheck className="h-16 w-16 text-white" />
+                    <div className="absolute inset-0 bg-primary/80 flex items-center justify-center rounded-t-lg">
+                      <ShieldCheck className="h-20 w-20 text-white" />
                     </div>
                   )}
                 </div>

@@ -24,19 +24,19 @@ const features = [
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)]">
       <main className="flex-1">
         {/* Hero Section */}
         <section className="w-full py-20 md:py-32 lg:py-40 bg-background">
           <div className="container px-4 md:px-6 text-center">
             <div className="max-w-3xl mx-auto">
-              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
+              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl">
                 eVoteChain
               </h1>
               <p className="mt-4 text-muted-foreground md:text-xl">
                 A secure, transparent, and tamper-proof e-voting system powered by blockchain technology.
               </p>
-              <div className="mt-6 flex justify-center gap-4">
+              <div className="mt-8 flex justify-center gap-4">
                 <Button asChild size="lg">
                   <Link href="/register">Get Started</Link>
                 </Button>
@@ -49,10 +49,10 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="w-full py-20 md:py-32 lg:py-40 bg-muted/40">
+        <section id="features" className="w-full py-20 md:py-32 bg-muted/40">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
-                <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">Key Features</div>
+                <div className="inline-block rounded-lg bg-primary/10 text-primary px-3 py-1 text-sm font-medium">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose eVoteChain?</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                     Our platform leverages cutting-edge technology to bring trust and transparency back to the voting process.
@@ -60,12 +60,12 @@ export default function Home() {
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3">
               {features.map((feature) => (
-                <Card key={feature.title} className="text-center h-full">
+                <Card key={feature.title} className="text-center h-full hover:shadow-lg transition-shadow duration-300">
                   <CardHeader>
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-4">
                         {feature.icon}
                     </div>
-                    <CardTitle>{feature.title}</CardTitle>
+                    <CardTitle className="text-xl">{feature.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <CardDescription>
