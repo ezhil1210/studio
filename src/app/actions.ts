@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import { auth, db } from "@/lib/firebase/firebase";
+import { getAuth } from "firebase/auth";
 import { LoginSchema, RegisterSchema } from "@/lib/schemas";
 import {
   collection,
@@ -17,19 +17,28 @@ import {
   orderBy,
   limit,
   writeBatch,
-  FieldValue,
   increment,
   Timestamp,
 } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
 import { analyzeVotingPatterns } from "@/ai/flows/analyze-voting-patterns-for-fraud";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { initializeFirebase } from "@/firebase";
+
 
 type ActionResult = {
   success: boolean;
   error?: string;
 };
+
+function getFirebaseAuth() {
+  return getAuth(initializeFirebase().firebaseApp);
+}
+
+function getDb() {
+  return getFirestore(initializeFirebase().firebaseApp);
+}
 
 // --- AUTH ACTIONS ---
 
@@ -37,6 +46,8 @@ export async function registerUser(
   values: RegisterSchema
 ): Promise<ActionResult> {
   try {
+    const auth = getFirebaseAuth();
+    const db = getDb();
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       values.email,
@@ -64,6 +75,7 @@ export async function registerUser(
 
 export async function loginUser(values: LoginSchema): Promise<ActionResult> {
   try {
+    const auth = getFirebaseAuth();
     await signInWithEmailAndPassword(auth, values.email, values.password);
     return { success: true };
   } catch (error: any) {
@@ -73,6 +85,7 @@ export async function loginUser(values: LoginSchema): Promise<ActionResult> {
 
 export async function logoutUser(): Promise<ActionResult> {
   try {
+    const auth = getFirebaseAuth();
     await signOut(auth);
     return { success: true };
   } catch (error: any) {
@@ -83,32 +96,8 @@ export async function logoutUser(): Promise<ActionResult> {
 
 // --- VOTING ACTIONS ---
 
-async function getCurrentUser() {
-    // This is a workaround for getting user server-side without a session library.
-    // In a production app, use a proper session management solution.
-    const cookieStore = cookies();
-    const session = cookieStore.get('firebase-session-workaround');
-    if (!session) return null;
-
-    // This is NOT secure. It's a placeholder for the prototype.
-    // Here you would typically verify the token.
-    return JSON.parse(session.value);
-}
-
-// NOTE: This is a HACK for the prototype to get the current user in server components/actions.
-// Firebase Auth is client-side, so we're setting a cookie on login/auth state change
-// which is insecure. In a real app, you would use Firebase Admin SDK with sessions
-// or a library like NextAuth.js. For this prototype, we'll assume the client sets this.
-// But since we can't modify the client-side `onAuthStateChanged`, we'll make actions
-// that need the user fail gracefully or be called from client components that pass the UID.
-// For simplicity, we will make actions that require auth receive the user UID as an argument,
-// passed from client components that have access to it via `useAuth`.
 const getAuthenticatedUserUid = (): string | null => {
-    // In a real app, this would verify a session token and return the UID.
-    // For this prototype, we will rely on client components to pass the UID.
-    // This function serves as a placeholder for that logic.
-    // The `getVoterStatus` and `castVote` will rely on the currently signed-in user
-    // via the Firebase JS SDK, which works with Server Actions.
+    const auth = getFirebaseAuth();
     if (auth.currentUser) {
         return auth.currentUser.uid;
     }
@@ -120,7 +109,7 @@ export async function getVoterStatus(): Promise<{ hasVoted: boolean }> {
   if (!uid) {
     return { hasVoted: false };
   }
-
+  const db = getDb();
   const userDocRef = doc(db, "users", uid);
   const userDoc = await getDoc(userDocRef);
 
@@ -141,7 +130,7 @@ export async function castVote({
   if (!uid) {
     return { success: false, error: "You must be logged in to vote." };
   }
-
+  const db = getDb();
   const userDocRef = doc(db, "users", uid);
   const blockchainColRef = collection(db, "blockchain");
   const resultsDocRef = doc(db, "results", "tally");
@@ -210,6 +199,7 @@ export async function castVote({
 // --- DATA FETCHING ACTIONS ---
 
 export async function getVoteResults(): Promise<Record<string, number>> {
+    const db = getDb();
     const resultsDocRef = doc(db, "results", "tally");
     const docSnap = await getDoc(resultsDocRef);
 
@@ -229,6 +219,7 @@ type Block = {
 };
 
 export async function getBlockchainData(): Promise<Block[]> {
+    const db = getDb();
     const blockchainColRef = collection(db, "blockchain");
     const q = query(blockchainColRef, orderBy("timestamp", "asc"));
     const snapshot = await getDocs(q);
