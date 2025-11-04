@@ -28,7 +28,6 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
 import { RegisterSchema } from "@/lib/schemas";
-import type { User } from "firebase/auth";
 
 type ActionResult = {
   success: boolean;
@@ -117,13 +116,13 @@ export async function loginUser({ email, password }: { email?: string; password?
 }
 
 
-export async function logoutUser(user: User | null): Promise<ActionResult> {
+export async function logoutUser(): Promise<ActionResult> {
   try {
     const auth = getFirebaseAuth();
     const currentUser = auth.currentUser;
 
     if (currentUser) {
-       if (user?.isAnonymous) {
+       if (currentUser.isAnonymous) {
         await deleteUser(currentUser);
       } else {
         await signOut(auth);

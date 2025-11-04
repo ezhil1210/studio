@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, Vote, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { logoutUser } from "@/app/actions";
+import { useRouter } from "next/navigation";
 
 const navLinks = [
   { href: "/vote", label: "Vote" },
@@ -25,13 +26,14 @@ const navLinks = [
 
 export default function Header() {
   const { user, isUserLoading } = useAuth();
+  const router = useRouter();
 
   const handleLogout = async () => {
-    await logoutUser(user);
+    await logoutUser();
     window.location.href = '/';
   };
 
-  const userInitial = user?.isAnonymous ? "D" : user?.email?.charAt(0).toUpperCase() || "U";
+  const userInitial = user?.isAnonymous ? "D" : user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -141,5 +143,3 @@ export default function Header() {
     </header>
   );
 }
-
-    
