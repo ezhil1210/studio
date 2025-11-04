@@ -1,10 +1,29 @@
+
+'use client';
+
 import { VoteClient } from "@/components/VoteClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
-// The server-side logic has been removed.
-// The VoteClient component now handles all rendering logic,
-// relying on the useAuth hook to get the user state after
-// the automatic anonymous sign-in is complete.
+export default function VotePage() {
+  const { user, isUserLoading } = useAuth();
+  const router = useRouter();
 
-export default async function VotePage() {
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
+  
   return <VoteClient />;
 }

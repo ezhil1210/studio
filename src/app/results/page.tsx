@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/card';
 import { BarChart, Loader2 } from 'lucide-react';
 import { onSnapshot, collection, query, getFirestore } from 'firebase/firestore';
-import { useFirestore as useFirebaseFirestore } from '@/firebase';
+import { useFirestore as useFirebaseFirestore, useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 type ChartData = { name: string; votes: number }[];
 
@@ -21,29 +22,43 @@ export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, number> | null>(null);
   const isLoading = results === null;
   const firestore = useFirebaseFirestore();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
 
   useEffect(() => {
-    if (!firestore) return;
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    if (!firestore || !user) return;
 
     // Initial fetch to prevent loading state if data is already there.
     getVoteResults().then(setResults);
 
     // Set up a real-time listener for all votes.
-    const votesQuery = query(collection(firestore, 'blocks'));
+    const blocksQuery = query(collection(firestore, 'blocks'));
     
-    const unsubscribe = onSnapshot(votesQuery, async () => {
+    const unsubscribe = onSnapshot(blocksQuery, async () => {
         // When a change is detected, re-fetch the aggregated results.
-        // This is more efficient than processing all votes on the client.
         const updatedResults = await getVoteResults();
         setResults(updatedResults);
     }, (error) => {
         console.error("Error listening to vote results:", error);
-        // Optionally handle listener errors
     });
 
-    // Cleanup the listener when the component unmounts.
     return () => unsubscribe();
-  }, [firestore]);
+  }, [firestore, user]);
+
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
 
 
   const chartData: ChartData = results

@@ -9,13 +9,22 @@ import { demoLogin } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const { user, isUserLoading } = useAuth();
+
+  useEffect(() => {
+    // If user is already logged in, redirect them to the vote page
+    if (!isUserLoading && user) {
+      router.push("/vote");
+    }
+  }, [user, isUserLoading, router]);
 
   const handleDemoLogin = async () => {
     setIsDemoLoading(true);
@@ -25,7 +34,8 @@ export default function LoginPage() {
         title: "Welcome, Demo User!",
         description: "You are now logged in anonymously.",
       });
-      router.push("/vote");
+      // The useEffect will handle the redirect
+      router.refresh();
     } else {
       toast({
         variant: "destructive",
@@ -35,6 +45,15 @@ export default function LoginPage() {
       setIsDemoLoading(false);
     }
   };
+
+  // While checking auth state or if user is found, show a loader
+  if (isUserLoading || user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="container flex items-center justify-center min-h-[calc(100vh-8rem)] p-4">

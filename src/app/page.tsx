@@ -1,89 +1,96 @@
 
-'use client';
-import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
-import { LoginForm } from "@/components/auth/LoginForm";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import Link from "next/link";
-import { Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { demoLogin } from "@/app/actions";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Lock, BarChart, Blocks } from 'lucide-react';
+import Link from 'next/link';
+
+const features = [
+  {
+    icon: <Lock className="h-10 w-10 text-primary" />,
+    title: 'Secure Voting',
+    description: 'Each vote is encrypted and securely stored, ensuring voter privacy and data integrity.',
+  },
+  {
+    icon: <Blocks className="h-10 w-10 text-primary" />,
+    title: 'Transparent Ledger',
+    description: 'All votes are recorded on an immutable blockchain, providing a transparent and auditable trail.',
+  },
+  {
+    icon: <BarChart className="h-10 w-10 text-primary" />,
+    title: 'Real-Time Results',
+    description: 'Watch the results update live as votes are cast and verified on the blockchain.',
+  },
+];
 
 export default function Home() {
-  const { user, isUserLoading } = useAuth();
-  const router = useRouter();
-  const { toast } = useToast();
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isUserLoading && user) {
-      router.push("/vote");
-    }
-  }, [user, isUserLoading, router]);
-
-  const handleDemoLogin = async () => {
-    setIsDemoLoading(true);
-    const result = await demoLogin();
-    if (result.success) {
-      toast({
-        title: "Welcome, Demo User!",
-        description: "You are now logged in anonymously.",
-      });
-      // The useEffect will handle the redirect
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Demo Login Failed",
-        description: result.error,
-      });
-      setIsDemoLoading(false);
-    }
-  };
-
-
-  if (isUserLoading || user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
-    <div className="container flex items-center justify-center min-h-[calc(100vh-8rem)] p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-headline">eVoteChain</CardTitle>
-          <CardDescription>
-            Secure, Transparent E-Voting
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-center text-sm text-muted-foreground mb-4">Login to cast your vote or try the demo.</p>
-          <LoginForm />
-          <Separator className="my-4" />
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleDemoLogin}
-            disabled={isDemoLoading}
-          >
-            {isDemoLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            Continue as Demo User
-          </Button>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="underline">
-              Register
-            </Link>
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="w-full py-20 md:py-32 lg:py-40 bg-background">
+          <div className="container px-4 md:px-6 text-center">
+            <div className="max-w-3xl mx-auto">
+              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl font-headline">
+                eVoteChain
+              </h1>
+              <p className="mt-4 text-muted-foreground md:text-xl">
+                A secure, transparent, and tamper-proof e-voting system powered by blockchain technology.
+              </p>
+              <div className="mt-6 flex justify-center gap-4">
+                <Button asChild size="lg">
+                  <Link href="/register">Get Started</Link>
+                </Button>
+                <Button asChild variant="outline" size="lg">
+                  <Link href="/login">Login</Link>
+                </Button>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </section>
+
+        {/* Features Section */}
+        <section className="w-full py-20 md:py-32 lg:py-40 bg-muted/40">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+                <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">Key Features</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose eVoteChain?</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                    Our platform leverages cutting-edge technology to bring trust and transparency back to the voting process.
+                </p>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3">
+              {features.map((feature) => (
+                <Card key={feature.title} className="text-center h-full">
+                  <CardHeader>
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
+                        {feature.icon}
+                    </div>
+                    <CardTitle>{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription>
+                      {feature.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+        <p className="text-xs text-muted-foreground">&copy; 2024 eVoteChain. All rights reserved.</p>
+        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
+          <Link className="text-xs hover:underline underline-offset-4" href="#">
+            Terms of Service
+          </Link>
+          <Link className="text-xs hover:underline underline-offset-4" href="#">
+            Privacy
+          </Link>
+        </nav>
+      </footer>
     </div>
   );
 }

@@ -1,12 +1,13 @@
 
 'use client';
 
-import React from 'react';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import React, { useEffect } from 'react';
+import { useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore as useFirebaseFirestore } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 type Vote = {
   id: string;
@@ -28,19 +29,34 @@ type Block = {
 
 export default function BlockchainPage() {
   const firestore = useFirebaseFirestore();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
   
   const blocksQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    // We sort by timestamp in descending order to get the newest blocks first.
     return query(collection(firestore, 'blocks'), orderBy('timestamp', 'desc'));
   }, [firestore]);
 
-  const { data: blockchain, isLoading } = useCollection<Block>(blocksQuery);
+  const { data: blockchain, isLoading: isLoadingBlockchain } = useCollection<Block>(blocksQuery);
 
-  if (isLoading) {
+  if (isUserLoading || isLoadingBlockchain) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) {
+     return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
@@ -60,7 +76,7 @@ export default function BlockchainPage() {
             <div className="mx-auto bg-muted rounded-full p-4 w-fit">
               <Blocks className="h-12 w-12 text-muted-foreground" />
             </div>
-            <CardTitle className="mt-4">The Chain is Empty</CardTitle>
+            <CardTitle>The Chain is Empty</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
