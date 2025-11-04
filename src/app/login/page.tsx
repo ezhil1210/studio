@@ -8,7 +8,7 @@ import { demoLogin } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -16,14 +16,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isDemoLoading, setIsDemoLoading] = useState(false);
-  const { user, isUserLoading } = useAuth();
-
-  useEffect(() => {
-    // Only redirect if the user is loaded and authenticated
-    if (!isUserLoading && user) {
-      router.push("/vote");
-    }
-  }, [user, isUserLoading, router]);
+  const { isUserLoading } = useAuth();
 
   const handleDemoLogin = async () => {
     setIsDemoLoading(true);
@@ -33,7 +26,6 @@ export default function LoginPage() {
         title: "Welcome, Demo User!",
         description: "You are now logged in anonymously.",
       });
-      // The useEffect will handle the redirect after the auth state updates.
       router.refresh();
     } else {
       toast({
@@ -41,13 +33,11 @@ export default function LoginPage() {
         title: "Demo Login Failed",
         description: result.error,
       });
-      setIsDemoLoading(false);
     }
+    setIsDemoLoading(false);
   };
 
-  // While checking the auth state, show a full-page loader.
-  // This prevents a flash of the login form before the redirect check.
-  if (isUserLoading || user) {
+  if (isUserLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -55,7 +45,6 @@ export default function LoginPage() {
     );
   }
   
-  // If the user is not logged in (and we're done loading), show the login form.
   return (
     <div className="container flex items-center justify-center min-h-screen p-4">
       <Card className="w-full max-w-sm border-0 shadow-lg sm:border">

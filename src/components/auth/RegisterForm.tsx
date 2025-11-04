@@ -45,15 +45,14 @@ export function RegisterForm() {
         title: "Registration Successful",
         description: "Please login to continue.",
       });
-      router.push("/login"); 
     } else {
       toast({
         variant: "destructive",
         title: "Registration Failed",
         description: result.error,
       });
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   }
 
   return (

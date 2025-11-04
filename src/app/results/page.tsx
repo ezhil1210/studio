@@ -14,24 +14,16 @@ import {
 import { BarChart, Loader2 } from 'lucide-react';
 import { onSnapshot, collection, query } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase';
-import { useRouter } from 'next/navigation';
 
 type ChartData = { name: string; votes: number }[];
 
 export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, number> | null>(null);
   const firestore = useFirestore();
-  const { user, isUserLoading } = useAuth();
-  const router = useRouter();
+  const { isUserLoading } = useAuth();
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
-
-  useEffect(() => {
-    if (!firestore || !user) return;
+    if (!firestore) return;
 
     // Initial fetch to prevent loading state if data is already there.
     getVoteResults().then(setResults);
@@ -48,10 +40,10 @@ export default function ResultsPage() {
     });
 
     return () => unsubscribe();
-  }, [firestore, user]);
+  }, [firestore]);
 
 
-  if (isUserLoading || !user) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

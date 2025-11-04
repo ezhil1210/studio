@@ -42,16 +42,15 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      router.refresh(); // This re-fetches server components and allows the new user state to be recognized
-      router.push('/vote');
+      router.refresh(); 
     } else {
       toast({
         variant: "destructive",
         title: "Login Failed",
         description: result.error,
       });
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   }
 
   return (
