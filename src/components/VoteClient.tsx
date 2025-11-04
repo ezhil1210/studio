@@ -2,27 +2,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PlaceHolderImages, ImagePlaceholder } from "@/lib/placeholder-images";
-import Image from "next/image";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { cn } from "@/lib/utils";
 import { castVote, getVoterStatus } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, CheckCircle, Vote } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle, Vote, Star, Heart, Triangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const candidates = [
-  { name: "Candidate Alpha", imageId: "candidate-alpha" },
-  { name: "Candidate Bravo", imageId: "candidate-bravo" },
-  { name: "Candidate Charlie", imageId: "candidate-charlie" },
+  { name: "Candidate Alpha", icon: <Star className="h-16 w-16 text-yellow-400" /> },
+  { name: "Candidate Bravo", icon: <Heart className="h-16 w-16 text-red-500" /> },
+  { name: "Candidate Charlie", icon: <Triangle className="h-16 w-16 text-blue-500" /> },
 ];
 
 export function VoteClient() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
-  const [candidateImages, setCandidateImages] = useState<Record<string, ImagePlaceholder>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [checkingVoteStatus, setCheckingVoteStatus] = useState(true);
@@ -49,13 +46,6 @@ export function VoteClient() {
     }
   }, [user, isUserLoading]);
   
-  useEffect(() => {
-    const images = PlaceHolderImages.reduce((acc, img) => {
-      acc[img.id] = img;
-      return acc;
-    }, {} as Record<string, ImagePlaceholder>);
-    setCandidateImages(images);
-  }, []);
 
   const handleVote = async () => {
     if (!selectedCandidate) {
@@ -154,7 +144,6 @@ export function VoteClient() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
         {candidates.map((candidate) => {
-          const image = candidateImages[candidate.imageId];
           return (
             <Card
               key={candidate.name}
@@ -165,18 +154,10 @@ export function VoteClient() {
               )}
             >
               <CardHeader className="p-0">
-                <div className="relative aspect-square w-full">
-                  {image && (
-                    <Image
-                      src={image.imageUrl}
-                      alt={image.description}
-                      data-ai-hint={image.imageHint}
-                      fill
-                      className="object-cover rounded-t-lg"
-                    />
-                  )}
+                <div className="relative aspect-square w-full flex items-center justify-center rounded-t-lg bg-card-foreground/5 dark:bg-card-foreground/10">
+                  {candidate.icon}
                   {selectedCandidate === candidate.name && (
-                    <div className="absolute inset-0 bg-primary/70 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-primary/70 flex items-center justify-center rounded-t-lg">
                       <ShieldCheck className="h-16 w-16 text-white" />
                     </div>
                   )}
