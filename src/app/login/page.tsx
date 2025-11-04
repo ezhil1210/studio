@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { demoLogin } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,9 +12,7 @@ import { Loader2 } from "lucide-react";
 import { useUser } from "@/firebase";
 
 export default function LoginPage() {
-  const { toast } = useToast();
   const router = useRouter();
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const { user, isUserLoading } = useUser();
 
   useEffect(() => {
@@ -25,23 +22,10 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const handleDemoLogin = async () => {
-    setIsDemoLoading(true);
-    const result = await demoLogin();
-    if (result.success) {
-      toast({
-        title: "Welcome, Demo User!",
-        description: "You are now logged in anonymously.",
-      });
-      // The useEffect will handle the redirect
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Demo Login Failed",
-        description: result.error,
-      });
-      setIsDemoLoading(false);
-    }
+  const handleDemoClick = () => {
+    // This button is on the login page, so clicking it will do nothing
+    // as per the request to "proceed to login page".
+    router.push('/login');
   };
 
   // While loading auth state, or if a user is already logged in (and useEffect is about to redirect), show a loader.
@@ -81,12 +65,8 @@ export default function LoginPage() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={handleDemoLogin}
-            disabled={isDemoLoading}
+            onClick={handleDemoClick}
           >
-            {isDemoLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
             Demo User
           </Button>
           <div className="mt-4 text-center text-sm">
