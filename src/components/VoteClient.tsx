@@ -23,7 +23,8 @@ export function VoteClient() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [candidateImages, setCandidateImages] = useState<Record<string, ImagePlaceholder>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasVoted, setHasVoted] = useState<boolean | null>(null);
+  const [hasVoted, setHasVoted] = useState<boolean | null>(false); // Default to false
+  const [checkingVoteStatus, setCheckingVoteStatus] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -32,15 +33,19 @@ export function VoteClient() {
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
+      return;
     }
 
-    if(user && hasVoted === null) {
-        getVoterStatus(user.uid).then(status => {
-            setHasVoted(status.hasVoted);
-        });
+    if (user) {
+      setCheckingVoteStatus(true);
+      getVoterStatus(user.uid).then(status => {
+          setHasVoted(status.hasVoted);
+          setCheckingVoteStatus(false);
+      });
+    } else if (!isUserLoading) {
+        setCheckingVoteStatus(false);
     }
-
-  }, [user, isUserLoading, router, hasVoted]);
+  }, [user, isUserLoading, router]);
   
   useEffect(() => {
     const images = PlaceHolderImages.reduce((acc, img) => {
@@ -83,11 +88,15 @@ export function VoteClient() {
         title: "Voting Failed",
         description: result.error,
       });
-      setIsSubmitting(false);
+      // If the error is that they already voted, update the UI state
+      if (result.error === "You have already voted.") {
+        setHasVoted(true);
+      }
     }
+    setIsSubmitting(false);
   };
   
-  if (isUserLoading || !user || hasVoted === null) {
+  if (isUserLoading || !user || checkingVoteStatus) {
     return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 

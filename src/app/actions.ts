@@ -117,9 +117,10 @@ export async function getVoterStatus(uid: string): Promise<{ hasVoted: boolean }
   }
   const db = getDb();
   
-  // We need to check every vote in every block's subcollection. This is inefficient.
-  // A better schema would be a top-level `votes` collection or a `hasVoted` flag on the user.
-  // Given the current schema, we iterate.
+  // This check is inefficient and a primary cause of performance issues.
+  // A better schema would be a top-level `votes` collection with a queryable `voterId`
+  // or a `hasVoted` flag on the voter document itself.
+  // Given the current schema, we iterate, but this will be slow.
   const blocksSnapshot = await getDocs(collection(db, "blocks"));
   for (const blockDoc of blocksSnapshot.docs) {
     const votesColRef = collection(db, `blocks/${blockDoc.id}/votes`);
@@ -147,9 +148,13 @@ export async function castVote({
   }
   const db = getDb();
   const voterDocRef = doc(db, "voters", uid);
-  const blocksColRef = collection(db, "blocks");
+  
 
-  // For anonymous users, we skip the voter check or create a temporary one
+  const { hasVoted } = await getVoterStatus(uid);
+  if (hasVoted) {
+      return { success: false, error: "You have already voted." };
+  }
+  
   const voterDoc = await getDoc(voterDocRef);
   if (!voterDoc.exists()) {
     // Create a dummy voter profile for anonymous user if it doesn't exist
@@ -161,17 +166,12 @@ export async function castVote({
       registrationDate: Timestamp.now().toDate().toISOString()
     });
   }
-  
-  const { hasVoted } = await getVoterStatus(uid);
-  if (hasVoted) {
-      return { success: false, error: "You have already voted." };
-  }
 
 
   try {
     // Get the last block in the chain to find previous hash
     const lastBlockQuery = query(
-      blocksColRef,
+      collection(db, "blocks"),
       orderBy("timestamp", "desc"),
       limit(1)
     );
@@ -212,7 +212,7 @@ export async function castVote({
     const batch = writeBatch(db);
 
     // 1. Add new block to the blockchain
-    const newBlockRef = doc(blocksColRef, newBlockData.id);
+    const newBlockRef = doc(db, "blocks", newBlockData.id);
     batch.set(newBlockRef, newBlockData);
 
     // 2. Add vote to the subcollection
