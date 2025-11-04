@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { castVote } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, CheckCircle, Star, Heart, Triangle } from "lucide-react";
-import { useUser } from "@/firebase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -21,11 +20,9 @@ const candidates = [
 export function VoteClient() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false); // Local boolean to track vote
   const { toast } = useToast();
   const router = useRouter();
-  
-  const { user, isUserLoading } = useUser();
   
   const handleVote = async () => {
     if (!selectedCandidate) {
@@ -36,24 +33,16 @@ export function VoteClient() {
       });
       return;
     }
-    if (!user) {
-        toast({
-            variant: "destructive",
-            title: "Authentication Error",
-            description: "You must be logged in to vote.",
-        });
-        return;
-    }
     
     setIsSubmitting(true);
-    const result = await castVote({ candidate: selectedCandidate, userId: user.uid });
+    const result = await castVote({ candidate: selectedCandidate });
 
     if (result.success) {
       toast({
         title: "Vote Cast Successfully",
         description: "Your vote has been securely recorded.",
       });
-      setHasVoted(true);
+      setHasVoted(true); // Set local boolean to true
     } else {
       toast({
         variant: "destructive",
@@ -63,10 +52,6 @@ export function VoteClient() {
     }
     setIsSubmitting(false);
   };
-  
-  if (isUserLoading || !user) {
-    return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] w-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
 
   if (hasVoted) {
     return (
@@ -138,7 +123,7 @@ export function VoteClient() {
       </div>
 
       <div className="mt-12 flex flex-col items-center">
-        <Button size="lg" onClick={handleVote} disabled={isSubmitting || !selectedCandidate}>
+        <Button size="lg" onClick={handleVote} disabled={isSubmitting || !selectedCandidate || hasVoted}>
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

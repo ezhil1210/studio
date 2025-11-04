@@ -154,28 +154,14 @@ export async function logoutUser(uid: string | null): Promise<ActionResult> {
 
 export async function castVote({
   candidate,
-  userId,
 }: {
   candidate: string;
-  userId: string;
 }): Promise<ActionResult> {
-  const uid = userId;
-  if (!uid) {
-    return { success: false, error: "You must be logged in to vote." };
-  }
   const db = getDb();
+  // A temporary, session-based voter ID
+  const voterId = `session-voter-${Date.now()}-${Math.random()}`;
 
   try {
-    // Check if user has already voted by checking for their voterId in all blocks
-    const blocksRef = collection(db, "blocks");
-    const q = query(blocksRef, where("voterIds", "array-contains", uid));
-    const userVoteSnap = await getDocs(q);
-
-    if (!userVoteSnap.empty) {
-        return { success: false, error: "You have already cast your vote." };
-    }
-
-
     const lastBlockQuery = query(
       collection(db, "blocks"),
       orderBy("timestamp", "desc"),
@@ -190,7 +176,7 @@ export async function castVote({
 
     const newVote = {
       id: doc(collection(db, `blocks/${blockId}/votes`)).id,
-      voterId: uid,
+      voterId: voterId, // Use session-based ID
       encryptedVoteData: candidate,
       timestamp: Timestamp.now().toDate().toISOString(),
       blockId: blockId,
@@ -201,7 +187,7 @@ export async function castVote({
       timestamp: newVote.timestamp,
       previousBlockHash: previousBlockHash,
       voteIds: [newVote.id],
-      voterIds: [uid],
+      voterIds: [voterId], // Use session-based ID
       hash: "",
     };
 
@@ -222,7 +208,7 @@ export async function castVote({
     batch.set(newBlockRef, newBlockData);
 
     const newVoteRef = doc(db, `blocks/${newBlockData.id}/votes`, newVote.id);
-batch.set(newVoteRef, newVote);
+    batch.set(newVoteRef, newVote);
 
     await batch.commit();
 
@@ -239,6 +225,7 @@ batch.set(newVoteRef, newVote);
     return { success: false, error: "Could not cast vote. Please try again." };
   }
 }
+
 
 // --- DATA FETCHING ACTIONS ---
 
