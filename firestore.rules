@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Voters can be created by any authenticated user.
+    // Voters can be created during registration.
     // They can only read/update their own data.
     match /voters/{voterId} {
       allow create: if isSignedIn();
@@ -27,8 +27,8 @@ service cloud.firestore {
       }
     }
 
-    // Fraudulent activity logs are write-only by the backend.
-    // No client should be able to read or write these directly.
+    // Fraudulent activity logs are write-only by the backend (or authorized admin).
+    // For this app, we'll keep them locked down.
     match /fraudulent_activities/{fraudulentActivityId} {
       allow read, write: if false;
     }

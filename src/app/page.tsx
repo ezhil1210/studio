@@ -1,7 +1,9 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Blocks, Lock, BarChartBig } from "lucide-react";
+import { Blocks, Lock, BarChartBig, PlayCircle } from "lucide-react";
 import Link from "next/link";
+import { SeedButton } from '@/components/SeedButton';
 
 export default function Home() {
   return (
@@ -17,13 +19,14 @@ export default function Home() {
                 A Secure, Transparent, and Tamper-Proof E-Voting System.
               </p>
             </div>
-            <div className="space-x-4">
-              <Button asChild>
-                <Link href="/vote">Start Voting</Link>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Button asChild size="lg">
+                <Link href="/vote">
+                  <PlayCircle className="mr-2 h-5 w-5" />
+                  Get Started
+                </Link>
               </Button>
-              <Button variant="secondary" asChild>
-                <Link href="/results">View Results</Link>
-              </Button>
+              <SeedButton />
             </div>
           </div>
         </div>
@@ -44,37 +47,37 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
-            <Card className="h-full">
+          <div className="mx-auto grid max-w-5xl items-stretch gap-6 py-12 lg:grid-cols-3 lg:gap-12">
+            <Card className="h-full flex flex-col">
               <CardHeader className="flex flex-col items-center text-center">
                 <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
                     <Lock className="h-8 w-8" />
                 </div>
                 <CardTitle>Secure Voting</CardTitle>
               </CardHeader>
-              <CardContent className="text-center">
+              <CardContent className="text-center flex-grow">
                 <p>Each vote is encrypted and cast by verified users, ensuring privacy and preventing unauthorized access.</p>
               </CardContent>
             </Card>
-            <Card className="h-full">
+            <Card className="h-full flex flex-col">
               <CardHeader className="flex flex-col items-center text-center">
                 <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
                     <Blocks className="h-8 w-8" />
                 </div>
                 <CardTitle>Blockchain Transparency</CardTitle>
               </CardHeader>
-              <CardContent className="text-center">
+              <CardContent className="text-center flex-grow">
                 <p>Every vote is recorded as a block on a simulated immutable ledger, making the entire voting process transparent and auditable.</p>
               </CardContent>
             </Card>
-            <Card className="h-full">
+            <Card className="h-full flex flex-col">
               <CardHeader className="flex flex-col items-center text-center">
                 <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
                     <BarChartBig className="h-8 w-8" />
                 </div>
                 <CardTitle>Real-time Results</CardTitle>
               </CardHeader>
-              <CardContent className="text-center">
+              <CardContent className="text-center flex-grow">
                 <p>View aggregated results as they happen. The transparent tallying process ensures confidence in the final outcome.</p>
               </CardContent>
             </Card>

@@ -9,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/
 import { cn } from "@/lib/utils";
 import { castVote, getVoterStatus } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, CheckCircle } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle, Vote } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const candidates = [
   { name: "Candidate Alpha", imageId: "candidate-alpha" },
@@ -25,11 +27,17 @@ export function VoteClient() {
   const [hasVoted, setHasVoted] = useState(false);
   const [checkingVoteStatus, setCheckingVoteStatus] = useState(true);
   const { toast } = useToast();
+  const router = useRouter();
   
   const { user, isUserLoading } = useAuth();
 
   useEffect(() => {
-    // Only check voter status if we have a user and we're not already checking
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  useEffect(() => {
     if (user && !isUserLoading) {
       setCheckingVoteStatus(true);
       getVoterStatus(user.uid).then(status => {
@@ -37,7 +45,6 @@ export function VoteClient() {
           setCheckingVoteStatus(false);
       });
     } else if (!user && !isUserLoading) {
-      // If there's no user and we are done loading, stop checking
       setCheckingVoteStatus(false);
     }
   }, [user, isUserLoading]);
@@ -83,7 +90,6 @@ export function VoteClient() {
         title: "Voting Failed",
         description: result.error || "An unknown error occurred.",
       });
-      // If the error is that they already voted, update the UI state
       if (result.error === "You have already voted.") {
         setHasVoted(true);
       }
@@ -91,12 +97,34 @@ export function VoteClient() {
     setIsSubmitting(false);
   };
   
-  // Show a loading spinner while the user state is being determined or vote status is being checked
   if (isUserLoading || checkingVoteStatus) {
     return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
-  // Once loading is complete, show the voted status or the voting options
+  if (!user) {
+    return (
+        <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)]">
+            <Card className="w-full max-w-lg text-center shadow-lg">
+                <CardHeader>
+                    <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit mb-2">
+                        <Vote className="h-10 w-10 text-primary" />
+                    </div>
+                    <CardTitle className="text-2xl font-headline mt-4">Welcome to eVoteChain</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <CardDescription className="text-lg mb-6">
+                        Please log in or register to cast your vote.
+                    </CardDescription>
+                    <div className="flex gap-4 justify-center">
+                        <Button asChild size="lg"><Link href="/login">Login</Link></Button>
+                        <Button asChild size="lg" variant="outline"><Link href="/register">Register</Link></Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+  }
+
   if (hasVoted) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)]">

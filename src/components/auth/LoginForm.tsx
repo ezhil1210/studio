@@ -30,8 +30,8 @@ export function LoginForm() {
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "anonymous@example.com", // Prefill for simplicity
-      password: "", // Not used for anonymous login
+      email: "",
+      password: "",
     },
   });
 
@@ -49,9 +49,9 @@ export function LoginForm() {
     if (result.success) {
       toast({
         title: "Login Successful",
-        description: "Welcome! Redirecting...",
+        description: "Welcome back!",
       });
-      router.refresh();
+      router.refresh(); // This re-fetches server components and allows the new user state to be recognized
     } else {
       toast({
         variant: "destructive",
@@ -72,14 +72,27 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} disabled />
+                <Input placeholder="name@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Login Anonymously"}
+          {isSubmitting ? <Loader2 className="animate-spin" /> : "Login"}
         </Button>
       </form>
     </Form>
