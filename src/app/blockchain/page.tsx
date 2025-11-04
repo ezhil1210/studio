@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useCollection, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { useFirestore as useFirebaseFirestore } from '@/firebase';
+import { useFirestore as useFirebaseFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 
 type Vote = {
@@ -29,7 +29,7 @@ type Block = {
 
 export default function BlockchainPage() {
   const firestore = useFirebaseFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -45,8 +45,16 @@ export default function BlockchainPage() {
 
   const { data: blockchain, isLoading: isLoadingBlockchain } = useCollection<Block>(blocksQuery);
 
-  if (isUserLoading || isLoadingBlockchain || !user) {
+  if (isUserLoading || !user) {
     return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  
+  if (isLoadingBlockchain) {
+     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>

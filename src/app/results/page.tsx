@@ -13,15 +13,15 @@ import {
 } from '@/components/ui/card';
 import { BarChart, Loader2 } from 'lucide-react';
 import { onSnapshot, collection, query } from 'firebase/firestore';
-import { useFirestore as useFirebaseFirestore, useUser } from '@/firebase';
+import { useFirestore, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 
 type ChartData = { name: string; votes: number }[];
 
 export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, number> | null>(null);
-  const firestore = useFirebaseFirestore();
-  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const { user, isUserLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function ResultsPage() {
   if (isUserLoading || !user) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin" />
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
