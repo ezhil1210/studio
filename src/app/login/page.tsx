@@ -19,10 +19,11 @@ export default function LoginPage() {
   const { user, isLoading: isUserLoading } = useUserContext();
 
   useEffect(() => {
-    if (user) {
+    // Only redirect if auth state is fully loaded and a user exists.
+    if (!isUserLoading && user) {
       router.push('/vote');
     }
-  }, [user, router]);
+  }, [user, isUserLoading, router]);
 
   const handleDemoLogin = async () => {
     setIsDemoLoading(true);
@@ -32,7 +33,7 @@ export default function LoginPage() {
         title: "Welcome, Demo User!",
         description: "You are now logged in anonymously.",
       });
-      router.push('/vote');
+      // The useEffect will handle the redirect
     } else {
       toast({
         variant: "destructive",
@@ -41,9 +42,9 @@ export default function LoginPage() {
       });
       setIsDemoLoading(false);
     }
-    // No need to set isDemoLoading to false on success, as redirection will unmount the component
   };
 
+  // While loading auth state, or if a user is already logged in (and useEffect is about to redirect), show a loader.
   if (isUserLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] w-full">
@@ -52,6 +53,7 @@ export default function LoginPage() {
     );
   }
 
+  // Only show the login form if not loading and no user is logged in.
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] p-4 w-full">
       <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:6rem_4rem]">
