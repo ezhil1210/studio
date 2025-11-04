@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInAnonymously,
+  deleteUser,
 } from "firebase/auth";
 import {
   collection,
@@ -26,6 +27,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
 import { RegisterSchema } from "@/lib/schemas";
+import type { User } from "firebase/auth";
 
 type ActionResult = {
   success: boolean;
@@ -111,29 +113,27 @@ export async function loginUser({ email, password }: { email?: string; password?
 }
 
 
-export async function logoutUser(): Promise<ActionResult> {
+export async function logoutUser(user: User | null): Promise<ActionResult> {
   try {
     const auth = getFirebaseAuth();
-    await signOut(auth);
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+       if (user?.isAnonymous) {
+        await deleteUser(currentUser);
+      } else {
+        await signOut(auth);
+      }
+    }
+   
     return { success: true };
   } catch (error: any) {
+    console.error("Logout failed:", error)
     return { success: false, error: error.message };
   }
 }
 
 // --- VOTING ACTIONS ---
-
-export async function getVoterStatus(uid: string): Promise<{ hasVoted: boolean }> {
-  if (!uid) {
-    return { hasVoted: false };
-  }
-  const db = getDb();
-  
-  const blocksQuery = query(collection(db, "blocks"), where('voterIds', 'array-contains', uid));
-  const querySnapshot = await getDocs(blocksQuery);
-
-  return { hasVoted: !querySnapshot.empty };
-}
 
 export async function castVote({
   candidate,
@@ -149,12 +149,6 @@ export async function castVote({
   const db = getDb();
 
   try {
-    // This check is removed to allow multiple votes for prototyping
-    // const { hasVoted } = await getVoterStatus(uid);
-    // if (hasVoted) {
-    //   return { success: false, error: "You have already voted." };
-    // }
-
     const lastBlockQuery = query(
       collection(db, "blocks"),
       orderBy("timestamp", "desc"),
@@ -201,7 +195,7 @@ export async function castVote({
     batch.set(newBlockRef, newBlockData);
 
     const newVoteRef = doc(db, `blocks/${newBlockData.id}/votes`, newVote.id);
-    batch.set(newVoteRef, newVote);
+batch.set(newVoteRef, newVote);
 
     await batch.commit();
 
@@ -285,3 +279,5 @@ export async function getBlockchainData(): Promise<Block[]> {
   
   return blocks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
+
+    

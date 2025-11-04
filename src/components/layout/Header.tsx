@@ -16,7 +16,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, Vote, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { logoutUser } from "@/app/actions";
-import { useRouter } from "next/navigation";
 
 const navLinks = [
   { href: "/vote", label: "Vote" },
@@ -26,10 +25,9 @@ const navLinks = [
 
 export default function Header() {
   const { user, isUserLoading } = useAuth();
-  const router = useRouter();
 
   const handleLogout = async () => {
-    await logoutUser();
+    await logoutUser(user);
     window.location.href = '/';
   };
 
@@ -143,3 +141,5 @@ export default function Header() {
     </header>
   );
 }
+
+    
