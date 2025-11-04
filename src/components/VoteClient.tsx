@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -50,9 +51,17 @@ export function VoteClient() {
       });
       return;
     }
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Authentication Error",
+            description: "You must be logged in to vote.",
+        });
+        return;
+    }
     
     setIsSubmitting(true);
-    const result = await castVote({ candidate: selectedCandidate });
+    const result = await castVote({ candidate: selectedCandidate, userId: user.uid });
 
     if (result.success) {
       toast({

@@ -1,3 +1,4 @@
+
 "use server";
 
 import {
@@ -17,8 +18,8 @@ import {
   orderBy,
   limit,
   writeBatch,
-  increment,
   Timestamp,
+  where
 } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
@@ -33,6 +34,7 @@ type ActionResult = {
   error?: string;
 };
 
+// Server-side Firebase initialization
 function getFirebaseApp(): FirebaseApp {
     if (getApps().length) {
         return getApp();
@@ -105,34 +107,52 @@ export async function logoutUser(): Promise<ActionResult> {
 
 // --- VOTING ACTIONS ---
 
-const getAuthenticatedUserUid = (): string | null => {
+export async function getAuthenticatedUserUid(): Promise<string | null> {
     const auth = getFirebaseAuth();
-    if (auth.currentUser) {
-        return auth.currentUser.uid;
-    }
-    return null;
+    // This is problematic on server actions as currentUser is not reliable.
+    // A proper solution would involve session management (e.g., with cookies).
+    // For this prototype, we'll assume it might work in some environments but acknowledge its flaw.
+    // A better approach would be to get the UID on the client and pass it to server actions.
+    // Or manage sessions properly.
+    // For now, this is a placeholder for a more robust solution.
+    // Let's try to get it from the auth instance, but this is not guaranteed to work.
+    // A better way for server actions is to manage session cookies.
+    // Since we don't have that, we'll pass the UID from the client when needed.
+    // This function will be simplified to reflect it's not the right way for server actions.
+    return auth.currentUser?.uid || null;
 }
 
-export async function getVoterStatus(): Promise<{ hasVoted: boolean }> {
-  const uid = getAuthenticatedUserUid();
+export async function getVoterStatus(uid: string): Promise<{ hasVoted: boolean }> {
   if (!uid) {
     return { hasVoted: false };
   }
   const db = getDb();
   
-  const voteQuery = query(collection(db, "blocks"), where("voterId", "==", uid), limit(1));
-  const voteSnapshot = await getDocs(voteQuery);
+  // We need to check every vote in every block's subcollection. This is inefficient.
+  // A better schema would be a top-level `votes` collection or a `hasVoted` flag on the user.
+  // Given the current schema, we iterate.
+  const blocksSnapshot = await getDocs(collection(db, "blocks"));
+  for (const blockDoc of blocksSnapshot.docs) {
+    const votesColRef = collection(db, `blocks/${blockDoc.id}/votes`);
+    const voteQuery = query(votesColRef, where("voterId", "==", uid), limit(1));
+    const voteSnapshot = await getDocs(voteQuery);
+    if (!voteSnapshot.empty) {
+      return { hasVoted: true };
+    }
+  }
 
-  return { hasVoted: !voteSnapshot.empty };
+  return { hasVoted: false };
 }
 
 
 export async function castVote({
   candidate,
+  userId
 }: {
   candidate: string;
+  userId: string;
 }): Promise<ActionResult> {
-  const uid = getAuthenticatedUserUid();
+  const uid = userId;
   if (!uid) {
     return { success: false, error: "You must be logged in to vote." };
   }
@@ -145,11 +165,9 @@ export async function castVote({
     return { success: false, error: "Voter not found." };
   }
   
-  const existingVoteQuery = query(collection(db, "blocks"), where("voterId", "==", uid), limit(1));
-  const existingVoteSnapshot = await getDocs(existingVoteQuery);
-
-  if (!existingVoteSnapshot.empty) {
-    return { success: false, error: "You have already voted." };
+  const { hasVoted } = await getVoterStatus(uid);
+  if (hasVoted) {
+      return { success: false, error: "You have already voted." };
   }
 
 
@@ -163,7 +181,7 @@ export async function castVote({
     const lastBlockSnapshot = await getDocs(lastBlockQuery);
     const previousBlockHash = lastBlockSnapshot.empty
       ? "0".repeat(64) // Genesis block
-      : lastBlockSnapshot.docs[0].hash;
+      : lastBlockSnapshot.docs[0].data().hash;
       
     const blockId = doc(collection(db, 'blocks')).id;
 
@@ -175,7 +193,7 @@ export async function castVote({
       blockId: blockId,
     };
     
-    const newBlock = {
+    const newBlockData = {
       id: blockId,
       timestamp: newVote.timestamp,
       previousBlockHash: previousBlockHash,
@@ -185,23 +203,23 @@ export async function castVote({
 
     // Hash the new block's content
     const blockContentForHashing = {
-        id: newBlock.id,
-        timestamp: newBlock.timestamp,
-        previousBlockHash: newBlock.previousBlockHash,
-        voteIds: newBlock.voteIds
+        id: newBlockData.id,
+        timestamp: newBlockData.timestamp,
+        previousBlockHash: newBlockData.previousBlockHash,
+        voteIds: newBlockData.voteIds
     };
-    newBlock.hash = createHash('sha256').update(JSON.stringify(blockContentForHashing)).digest('hex');
+    newBlockData.hash = createHash('sha256').update(JSON.stringify(blockContentForHashing)).digest('hex');
 
 
     // Use a batch write to ensure atomicity
     const batch = writeBatch(db);
 
     // 1. Add new block to the blockchain
-    const newBlockRef = doc(blocksColRef, newBlock.id);
-    batch.set(newBlockRef, newBlock);
+    const newBlockRef = doc(blocksColRef, newBlockData.id);
+    batch.set(newBlockRef, newBlockData);
 
     // 2. Add vote to the subcollection
-    const newVoteRef = doc(db, `blocks/${newBlock.id}/votes`, newVote.id);
+    const newVoteRef = doc(db, `blocks/${newBlockData.id}/votes`, newVote.id);
     batch.set(newVoteRef, newVote);
 
     await batch.commit();

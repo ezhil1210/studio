@@ -1,4 +1,5 @@
-import { getVoterStatus } from "@/app/actions";
+
+import { getVoterStatus, getAuthenticatedUserUid } from "@/app/actions";
 import { VoteClient } from "@/components/VoteClient";
 import {
   Card,
@@ -8,28 +9,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CheckCircle } from "lucide-react";
-import { cookies } from 'next/headers';
-import { getAuth } from "firebase/auth/server";
+import { headers } from 'next/headers';
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 import { firebaseConfig } from "@/firebase/config";
 
-// Helper function to initialize Firebase app (server-side)
-function getFirebaseApp() {
-    if (getApps().length) {
-        return getApp();
-    }
-    return initializeApp(firebaseConfig);
-}
 
+// This page is a Server Component, but it needs to check auth state.
+// A robust solution uses session cookies managed by a server-side library.
+// For this prototype, we'll attempt a simpler server-side check,
+// but acknowledge that `getAuth().currentUser` is not reliable in all server environments.
+// The `VoteClient` component will handle the definitive client-side auth check.
 
 export default async function VotePage() {
-  const app = getFirebaseApp();
-  const auth = getAuth(app);
-  const user = await auth.currentUser;
-
+  
+  // This check is a preliminary server-side check. The real access control
+  // and state management will happen in the VoteClient component and server actions.
+  // We pass the user's logged-in status to the client to avoid a flash of content.
   let hasVoted = false;
-  if(user) {
-    const status = await getVoterStatus();
+  
+  // This is a workaround for this prototyping environment.
+  // In a real app, you would have a proper session management system.
+  const uid = await getAuthenticatedUserUid();
+
+  if (uid) {
+    const status = await getVoterStatus(uid);
     hasVoted = status.hasVoted;
   }
   
