@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useCollection } from '@/firebase';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
-import { collection, query, orderBy, getFirestore } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore as useFirebaseFirestore } from '@/firebase';
 
 type Vote = {
@@ -28,7 +27,8 @@ type Block = {
 
 export default function BlockchainPage() {
   const firestore = useFirebaseFirestore();
-  const blocksQuery = useMemo(() => {
+  
+  const blocksQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     // We sort by timestamp in descending order to get the newest blocks first.
     return query(collection(firestore, 'blocks'), orderBy('timestamp', 'desc'));
