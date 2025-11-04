@@ -42,7 +42,8 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      // Explicitly push to the vote page on successful login
+      // This ensures the client is aware of the auth change before navigating
+      router.refresh();
       router.push("/vote");
     } else {
       toast({
