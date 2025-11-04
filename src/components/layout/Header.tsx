@@ -30,8 +30,7 @@ export default function Header() {
 
   const handleLogout = async () => {
     await logoutUser();
-    router.push("/");
-    router.refresh();
+    window.location.href = '/';
   };
 
   const userInitial = user?.isAnonymous ? "D" : user?.email?.charAt(0).toUpperCase() || "U";
