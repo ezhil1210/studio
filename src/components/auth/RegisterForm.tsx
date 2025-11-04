@@ -45,7 +45,7 @@ export function RegisterForm() {
         title: "Registration Successful",
         description: "Please login to continue.",
       });
-      router.refresh(); // Refresh to update auth state
+      router.push("/login"); 
     } else {
       toast({
         variant: "destructive",

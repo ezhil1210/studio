@@ -18,6 +18,12 @@ export default function LoginPage() {
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const { user, isUserLoading } = useAuth();
 
+  useEffect(() => {
+    // Only redirect if the user is loaded and authenticated
+    if (!isUserLoading && user) {
+      router.push("/vote");
+    }
+  }, [user, isUserLoading, router]);
 
   const handleDemoLogin = async () => {
     setIsDemoLoading(true);
@@ -29,7 +35,6 @@ export default function LoginPage() {
       });
       // The useEffect will handle the redirect after the auth state updates.
       router.refresh();
-      router.push("/vote");
     } else {
       toast({
         variant: "destructive",
@@ -42,17 +47,7 @@ export default function LoginPage() {
 
   // While checking the auth state, show a full-page loader.
   // This prevents a flash of the login form before the redirect check.
-  if (isUserLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
-  // If the user is logged in, redirect them.
-  if (user) {
-    router.push("/vote");
+  if (isUserLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

@@ -17,15 +17,13 @@ import { Input } from "@/components/ui/input";
 import { loginUser } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
 
 export function LoginForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth();
 
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
@@ -34,13 +32,6 @@ export function LoginForm() {
       password: "",
     },
   });
-
-  useEffect(() => {
-    if (user) {
-      router.push("/vote");
-    }
-  }, [user, router]);
-
 
   async function onSubmit(values: LoginSchema) {
     setIsSubmitting(true);
@@ -52,6 +43,7 @@ export function LoginForm() {
         description: "Welcome back!",
       });
       router.refresh(); // This re-fetches server components and allows the new user state to be recognized
+      router.push('/vote');
     } else {
       toast({
         variant: "destructive",
