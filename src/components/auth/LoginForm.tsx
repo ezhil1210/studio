@@ -17,13 +17,15 @@ import { Input } from "@/components/ui/input";
 import { loginUser } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export function LoginForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
 
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
@@ -33,6 +35,15 @@ export function LoginForm() {
     },
   });
 
+  // This effect will run when the user state changes.
+  // If the user becomes authenticated, we redirect to the vote page.
+  useEffect(() => {
+    if (user) {
+      router.push("/vote");
+    }
+  }, [user, router]);
+
+
   async function onSubmit(values: LoginSchema) {
     setIsSubmitting(true);
     const result = await loginUser(values);
@@ -40,11 +51,13 @@ export function LoginForm() {
     if (result.success) {
       toast({
         title: "Login Successful",
-        description: "Welcome back!",
+        description: "Welcome back! Redirecting...",
       });
-      // The onAuthStateChanged listener will handle the auth state update.
-      // We just need to navigate to the desired page.
-      router.push("/vote");
+      // Refresh the current route. This allows the onAuthStateChanged listener
+      // to pick up the new user and update the `useAuth` hook state.
+      // The useEffect above will then handle the redirection.
+      router.refresh();
+
     } else {
       toast({
         variant: "destructive",
