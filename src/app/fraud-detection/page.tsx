@@ -9,21 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2, ShieldAlert, ShieldCheck, Bot } from "lucide-react";
 import type { FraudAnalysisOutput } from "@/ai/flows/analyze-voting-patterns-for-fraud";
 import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
 
 export default function FraudDetectionPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<FraudAnalysisOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, authLoading, router]);
-
+  const { user, isUserLoading: authLoading } = useAuth();
+  
   const handleAnalysis = async () => {
     setIsLoading(true);
     setError(null);
@@ -38,7 +30,7 @@ export default function FraudDetectionPage() {
     setIsLoading(false);
   };
   
-  if (authLoading || !user) {
+  if (authLoading) {
     return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -60,7 +52,7 @@ export default function FraudDetectionPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center">
-          <Button onClick={handleAnalysis} disabled={isLoading} size="lg">
+          <Button onClick={handleAnalysis} disabled={isLoading || !user} size="lg">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

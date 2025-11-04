@@ -19,10 +19,10 @@ export default function Home() {
             </div>
             <div className="space-x-4">
               <Button asChild>
-                <Link href="/register">Get Started</Link>
+                <Link href="/vote">Start Voting</Link>
               </Button>
               <Button variant="secondary" asChild>
-                <Link href="/login">Login</Link>
+                <Link href="/results">View Results</Link>
               </Button>
             </div>
           </div>

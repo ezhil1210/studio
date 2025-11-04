@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -11,7 +10,6 @@ import { castVote, getVoterStatus } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
 
 const candidates = [
   { name: "Candidate Alpha", imageId: "candidate-alpha" },
@@ -23,19 +21,13 @@ export function VoteClient() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [candidateImages, setCandidateImages] = useState<Record<string, ImagePlaceholder>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasVoted, setHasVoted] = useState<boolean | null>(false); // Default to false
+  const [hasVoted, setHasVoted] = useState<boolean | null>(false);
   const [checkingVoteStatus, setCheckingVoteStatus] = useState(true);
   const { toast } = useToast();
-  const router = useRouter();
-
+  
   const { user, isUserLoading } = useAuth();
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/login");
-      return;
-    }
-
     if (user) {
       setCheckingVoteStatus(true);
       getVoterStatus(user.uid).then(status => {
@@ -43,9 +35,11 @@ export function VoteClient() {
           setCheckingVoteStatus(false);
       });
     } else if (!isUserLoading) {
+        // If there's no user and we're not loading, they are logged out.
+        // In demo mode, the provider handles login, so we just wait.
         setCheckingVoteStatus(false);
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading]);
   
   useEffect(() => {
     const images = PlaceHolderImages.reduce((acc, img) => {
@@ -96,7 +90,7 @@ export function VoteClient() {
     setIsSubmitting(false);
   };
   
-  if (isUserLoading || !user || checkingVoteStatus) {
+  if (isUserLoading || checkingVoteStatus) {
     return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
