@@ -1,6 +1,6 @@
 import { getBlockchainData } from "@/app/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint } from "lucide-react";
+import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson } from "lucide-react";
 
 export default async function BlockchainPage() {
   const blockchain = await getBlockchainData();
@@ -51,7 +51,11 @@ export default async function BlockchainPage() {
                   </div>
                    <div className="flex items-start gap-3">
                     <Fingerprint className="h-4 w-4 mt-0.5 text-blue-500 shrink-0"/> 
-                    <p className="break-all"><span className="font-semibold text-muted-foreground">Voter ID (Hashed):</span> {block.voterId}</p>
+                    <p className="break-all"><span className="font-semibold text-muted-foreground">Voter ID (Hashed):</span> {block.votes[0]?.voterId}</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <FileJson className="h-4 w-4 mt-0.5 text-purple-500 shrink-0"/>
+                     <p className="break-all"><span className="font-semibold text-muted-foreground">Vote:</span> {block.votes[0]?.encryptedVoteData}</p>
                   </div>
                 </CardContent>
               </Card>

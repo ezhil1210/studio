@@ -8,11 +8,33 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CheckCircle } from "lucide-react";
+import { cookies } from 'next/headers';
+import { getAuth } from "firebase/auth/server";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { firebaseConfig } from "@/firebase/config";
+
+// Helper function to initialize Firebase app (server-side)
+function getFirebaseApp() {
+    if (getApps().length) {
+        return getApp();
+    }
+    return initializeApp(firebaseConfig);
+}
+
 
 export default async function VotePage() {
-  const voterStatus = await getVoterStatus();
+  const app = getFirebaseApp();
+  const auth = getAuth(app);
+  const user = await auth.currentUser;
 
-  if (voterStatus.hasVoted) {
+  let hasVoted = false;
+  if(user) {
+    const status = await getVoterStatus();
+    hasVoted = status.hasVoted;
+  }
+  
+
+  if (hasVoted) {
     return (
       <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)]">
         <Card className="w-full max-w-lg text-center shadow-lg">

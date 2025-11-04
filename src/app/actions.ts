@@ -4,8 +4,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  getAuth,
 } from "firebase/auth";
-import { getAuth } from "firebase/auth";
 import { LoginSchema, RegisterSchema } from "@/lib/schemas";
 import {
   collection,
@@ -24,7 +24,8 @@ import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
 import { analyzeVotingPatterns } from "@/ai/flows/analyze-voting-patterns-for-fraud";
 import { revalidatePath } from "next/cache";
-import { initializeFirebase } from "@/firebase";
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { firebaseConfig } from "@/firebase/config";
 
 
 type ActionResult = {
@@ -32,12 +33,19 @@ type ActionResult = {
   error?: string;
 };
 
+function getFirebaseApp(): FirebaseApp {
+    if (getApps().length) {
+        return getApp();
+    }
+    return initializeApp(firebaseConfig);
+}
+
 function getFirebaseAuth() {
-  return getAuth(initializeFirebase().firebaseApp);
+  return getAuth(getFirebaseApp());
 }
 
 function getDb() {
-  return getFirestore(initializeFirebase().firebaseApp);
+  return getFirestore(getFirebaseApp());
 }
 
 // --- AUTH ACTIONS ---
@@ -60,11 +68,12 @@ export async function registerUser(
       .update(values.voterId)
       .digest("hex");
 
-    await setDoc(doc(db, "users", user.uid), {
+    await setDoc(doc(db, "voters", user.uid), {
+      id: user.uid,
       name: values.name,
       email: user.email,
       hashedVoterId: hashedVoterId,
-      hasVoted: false,
+      registrationDate: Timestamp.now().toDate().toISOString()
     });
 
     return { success: true };
@@ -110,14 +119,11 @@ export async function getVoterStatus(): Promise<{ hasVoted: boolean }> {
     return { hasVoted: false };
   }
   const db = getDb();
-  const userDocRef = doc(db, "users", uid);
-  const userDoc = await getDoc(userDocRef);
+  
+  const voteQuery = query(collection(db, "blocks"), where("voterId", "==", uid), limit(1));
+  const voteSnapshot = await getDocs(voteQuery);
 
-  if (userDoc.exists() && userDoc.data().hasVoted) {
-    return { hasVoted: true };
-  }
-
-  return { hasVoted: false };
+  return { hasVoted: !voteSnapshot.empty };
 }
 
 
@@ -131,55 +137,72 @@ export async function castVote({
     return { success: false, error: "You must be logged in to vote." };
   }
   const db = getDb();
-  const userDocRef = doc(db, "users", uid);
-  const blockchainColRef = collection(db, "blockchain");
-  const resultsDocRef = doc(db, "results", "tally");
+  const voterDocRef = doc(db, "voters", uid);
+  const blocksColRef = collection(db, "blocks");
 
-  const userDoc = await getDoc(userDocRef);
-  if (!userDoc.exists()) {
+  const voterDoc = await getDoc(voterDocRef);
+  if (!voterDoc.exists()) {
     return { success: false, error: "Voter not found." };
   }
+  
+  const existingVoteQuery = query(collection(db, "blocks"), where("voterId", "==", uid), limit(1));
+  const existingVoteSnapshot = await getDocs(existingVoteQuery);
 
-  if (userDoc.data().hasVoted) {
+  if (!existingVoteSnapshot.empty) {
     return { success: false, error: "You have already voted." };
   }
+
 
   try {
     // Get the last block in the chain to find previous hash
     const lastBlockQuery = query(
-      blockchainColRef,
+      blocksColRef,
       orderBy("timestamp", "desc"),
       limit(1)
     );
     const lastBlockSnapshot = await getDocs(lastBlockQuery);
     const previousBlockHash = lastBlockSnapshot.empty
       ? "0".repeat(64) // Genesis block
-      : lastBlockSnapshot.docs[0].data().hash;
+      : lastBlockSnapshot.docs[0].hash;
+      
+    const blockId = doc(collection(db, 'blocks')).id;
 
-    const newBlock = {
-      voterId: userDoc.data().hashedVoterId, // Use the hashed voter ID
-      vote: candidate, // In a real scenario, this would be encrypted
-      timestamp: Timestamp.now(),
-      previousBlockHash,
+    const newVote = {
+      id: doc(collection(db, `blocks/${blockId}/votes`)).id,
+      voterId: uid,
+      encryptedVoteData: candidate, // In a real scenario, this would be encrypted
+      timestamp: Timestamp.now().toDate().toISOString(),
+      blockId: blockId,
     };
     
-    // Hash the new block's content
-    const blockHash = createHash('sha256').update(JSON.stringify(newBlock)).digest('hex');
+    const newBlock = {
+      id: blockId,
+      timestamp: newVote.timestamp,
+      previousBlockHash: previousBlockHash,
+      voteIds: [newVote.id],
+      hash: ''
+    };
 
-    const finalBlockData = { ...newBlock, hash: blockHash };
+    // Hash the new block's content
+    const blockContentForHashing = {
+        id: newBlock.id,
+        timestamp: newBlock.timestamp,
+        previousBlockHash: newBlock.previousBlockHash,
+        voteIds: newBlock.voteIds
+    };
+    newBlock.hash = createHash('sha256').update(JSON.stringify(blockContentForHashing)).digest('hex');
+
 
     // Use a batch write to ensure atomicity
     const batch = writeBatch(db);
 
     // 1. Add new block to the blockchain
-    const newBlockRef = doc(blockchainColRef);
-    batch.set(newBlockRef, finalBlockData);
+    const newBlockRef = doc(blocksColRef, newBlock.id);
+    batch.set(newBlockRef, newBlock);
 
-    // 2. Mark user as voted
-    batch.update(userDocRef, { hasVoted: true });
-
-    // 3. Increment the vote count for the candidate
-    batch.set(resultsDocRef, { [candidate]: increment(1) }, { merge: true });
+    // 2. Add vote to the subcollection
+    const newVoteRef = doc(db, `blocks/${newBlock.id}/votes`, newVote.id);
+    batch.set(newVoteRef, newVote);
 
     await batch.commit();
 
@@ -200,41 +223,66 @@ export async function castVote({
 
 export async function getVoteResults(): Promise<Record<string, number>> {
     const db = getDb();
-    const resultsDocRef = doc(db, "results", "tally");
-    const docSnap = await getDoc(resultsDocRef);
+    const blocksColRef = collection(db, "blocks");
+    const blocksSnapshot = await getDocs(blocksColRef);
+    
+    const results: Record<string, number> = {};
 
-    if (docSnap.exists()) {
-        return docSnap.data() as Record<string, number>;
+    for (const blockDoc of blocksSnapshot.docs) {
+        const votesColRef = collection(db, `blocks/${blockDoc.id}/votes`);
+        const votesSnapshot = await getDocs(votesColRef);
+        for (const voteDoc of votesSnapshot.docs) {
+            const voteData = voteDoc.data();
+            const candidate = voteData.encryptedVoteData;
+            results[candidate] = (results[candidate] || 0) + 1;
+        }
     }
-    return {};
+
+    return results;
+}
+
+type Vote = {
+    id: string;
+    voterId: string;
+    encryptedVoteData: string;
+    timestamp: string;
+    blockId: string;
 }
 
 type Block = {
     id: string;
-    voterId: string;
-    vote: string;
-    timestamp: number;
+    timestamp: string;
     previousBlockHash: string;
     hash: string;
+    voteIds: string[];
+    votes: Vote[];
 };
 
 export async function getBlockchainData(): Promise<Block[]> {
     const db = getDb();
-    const blockchainColRef = collection(db, "blockchain");
+    const blockchainColRef = collection(db, "blocks");
     const q = query(blockchainColRef, orderBy("timestamp", "asc"));
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            voterId: data.voterId,
-            vote: data.vote,
-            timestamp: data.timestamp.toMillis(),
-            previousBlockHash: data.previousBlockHash,
-            hash: data.hash,
-        };
-    });
+    const blocks: Block[] = [];
+
+    for (const docSnap of snapshot.docs) {
+        const blockData = docSnap.data();
+        const votesColRef = collection(db, `blocks/${docSnap.id}/votes`);
+        const votesSnapshot = await getDocs(votesColRef);
+        const votes = votesSnapshot.docs.map(voteDoc => voteDoc.data() as Vote);
+
+        blocks.push({
+            id: docSnap.id,
+            timestamp: blockData.timestamp,
+            previousBlockHash: blockData.previousBlockHash,
+            hash: blockData.hash,
+            voteIds: blockData.voteIds,
+            votes: votes,
+        });
+    }
+
+    return blocks;
 }
 
 
@@ -250,12 +298,32 @@ export async function runFraudAnalysis() {
         }
     }
 
-    const votingDataForAI = blockchainData.map(block => ({
-        voterId: block.voterId,
-        vote: block.vote,
-        timestamp: new Date(block.timestamp).toISOString(),
-    }));
+    const votingDataForAI = blockchainData.flatMap(block => 
+      block.votes.map(vote => ({
+        voterId: vote.voterId,
+        vote: vote.encryptedVoteData,
+        timestamp: vote.timestamp,
+      }))
+    );
 
     const analysis = await analyzeVotingPatterns({ votingData: votingDataForAI });
+    
+    if (analysis.isSuspiciousActivity && analysis.flaggedVoterIds.length > 0) {
+      const db = getDb();
+      const batch = writeBatch(db);
+      analysis.flaggedVoterIds.forEach(voterId => {
+        const activityId = doc(collection(db, 'fraudulent_activities')).id;
+        const fraudRef = doc(db, 'fraudulent_activities', activityId);
+        batch.set(fraudRef, {
+          id: activityId,
+          voterId: voterId,
+          timestamp: Timestamp.now().toDate().toISOString(),
+          description: analysis.explanation,
+          confidenceScore: 0.9, // Example score
+        });
+      });
+      await batch.commit();
+    }
+    
     return analysis;
 }
