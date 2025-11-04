@@ -4,6 +4,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { usePathname } from 'next/navigation';
@@ -43,6 +44,7 @@ export default function RootLayout({
               <main className="flex flex-1 flex-col items-center">
                 {children}
               </main>
+              <Footer />
             </div>
             <Toaster />
         </FirebaseClientProvider>
