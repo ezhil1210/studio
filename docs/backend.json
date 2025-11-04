@@ -1,0 +1,231 @@
+{
+  "entities": {
+    "Voter": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Voter",
+      "type": "object",
+      "description": "Represents a registered voter in the eVoteChain system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Voter entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The voter's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The voter's email address.",
+          "format": "email"
+        },
+        "hashedVoterId": {
+          "type": "string",
+          "description": "A unique, hashed identifier for the voter (e.g., SHA-256 hash)."
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "The date and time the voter registered.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "hashedVoterId",
+        "registrationDate"
+      ]
+    },
+    "Vote": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Vote",
+      "type": "object",
+      "description": "Represents a single vote cast by a voter.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Vote entity."
+        },
+        "voterId": {
+          "type": "string",
+          "description": "Reference to Voter. (Relationship: Voter 1:N Vote)"
+        },
+        "encryptedVoteData": {
+          "type": "string",
+          "description": "The encrypted data of the vote cast."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the vote was cast.",
+          "format": "date-time"
+        },
+        "blockId": {
+          "type": "string",
+          "description": "Reference to Block. (Relationship: Block 1:N Vote)"
+        }
+      },
+      "required": [
+        "id",
+        "voterId",
+        "encryptedVoteData",
+        "timestamp",
+        "blockId"
+      ]
+    },
+    "Block": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Block",
+      "type": "object",
+      "description": "Represents a block in the simulated blockchain, containing vote data.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Block entity."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the block was created.",
+          "format": "date-time"
+        },
+        "previousBlockHash": {
+          "type": "string",
+          "description": "Reference to the previous block's hash in the chain. Links block to other blocks."
+        },
+        "hash": {
+          "type": "string",
+          "description": "The SHA-256 hash of the block's data."
+        },
+        "voteIds": {
+          "type": "array",
+          "description": "References to Votes in this block. (Relationship: Block 1:N Vote)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "previousBlockHash",
+        "hash",
+        "voteIds"
+      ]
+    },
+    "FraudulentActivity": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FraudulentActivity",
+      "type": "object",
+      "description": "Represents a record of suspicious voting activity detected by the AI fraud detection system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the FraudulentActivity entity."
+        },
+        "voterId": {
+          "type": "string",
+          "description": "Reference to Voter. (Relationship: Voter 1:N FraudulentActivity) The ID of the voter involved in the suspicious activity."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the suspicious activity was detected.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the suspicious activity."
+        },
+        "confidenceScore": {
+          "type": "number",
+          "description": "A score representing the confidence level of the AI in identifying the activity as fraudulent (e.g., 0.0 to 1.0)."
+        }
+      },
+      "required": [
+        "id",
+        "voterId",
+        "timestamp",
+        "description",
+        "confidenceScore"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/voters/{voterId}",
+        "definition": {
+          "entityName": "Voter",
+          "schema": {
+            "$ref": "#/backend/entities/Voter"
+          },
+          "description": "Stores voter information, using the voter's unique ID as the document ID.  This collection enables checking for voter existence during registration and voting.  Includes denormalized `voterId` to avoid get() calls.",
+          "params": [
+            {
+              "name": "voterId",
+              "description": "The unique identifier of the voter."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/blocks/{blockId}/votes/{voteId}",
+        "definition": {
+          "entityName": "Vote",
+          "schema": {
+            "$ref": "#/backend/entities/Vote"
+          },
+          "description": "Stores individual votes within blocks.  Includes denormalized `voterId` to enable verification without additional reads. `blockId` is used for path-based authorization.",
+          "params": [
+            {
+              "name": "blockId",
+              "description": "The unique identifier of the block containing the vote."
+            },
+            {
+              "name": "voteId",
+              "description": "The unique identifier of the vote."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/blocks/{blockId}",
+        "definition": {
+          "entityName": "Block",
+          "schema": {
+            "$ref": "#/backend/entities/Block"
+          },
+          "description": "Stores blockchain blocks containing vote data.  `voteIds` are stored in each block. Block id is used as a top level document.",
+          "params": [
+            {
+              "name": "blockId",
+              "description": "The unique identifier of the block."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/fraudulent_activities/{fraudulentActivityId}",
+        "definition": {
+          "entityName": "FraudulentActivity",
+          "schema": {
+            "$ref": "#/backend/entities/FraudulentActivity"
+          },
+          "description": "Stores records of suspicious voting activity detected by the AI fraud detection system. Includes denormalized `voterId` to allow rules to check against voter documents.",
+          "params": [
+            {
+              "name": "fraudulentActivityId",
+              "description": "The unique identifier of the fraudulent activity record."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support a secure and transparent e-voting system using a simulated blockchain. To ensure authorization independence and prevent reliance on `get()` calls in security rules, we employ denormalization. Specifically, the `voterId` is stored within each `Vote` document to independently verify the voter's identity and prevent double voting without needing to fetch the voter's document. The `Block` stores the `voteIds`. This also helps to avoid using `get()` calls in the rules. \n\nThe structure is segregated to maintain a homogeneous security posture. Voter data, votes, blocks, and fraudulent activity are stored in separate collections, each with distinct security rules.\n\nThe QAPs (Rules are not Filters) requirement is satisfied by segregating the data and using path-based rules and existence checks in the `voters` and `fraudulent_activities` collections.\n\nPath-based ownership is used for the `votes` subcollection under each `block`. This means a `vote` has the `blockId` as part of the path, simplifying the security rules as each vote is implicitly associated with a specific block."
+  }
+}
