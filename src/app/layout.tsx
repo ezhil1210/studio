@@ -2,6 +2,7 @@
 'use client';
 
 import type { Metadata } from 'next';
+import { useState, useEffect } from 'react';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -15,6 +16,17 @@ const metadata: Metadata = {
   title: 'eVoteChain',
   description: 'A secure, transparent, and tamper-proof e-voting system using blockchain technology.',
 };
+
+// Wrapper to ensure Toaster only renders on the client
+function ClientOnlyToaster() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  return isClient ? <Toaster /> : null;
+}
 
 
 export default function RootLayout({
@@ -46,7 +58,7 @@ export default function RootLayout({
               </main>
               <Footer />
             </div>
-            <Toaster />
+            <ClientOnlyToaster />
         </FirebaseClientProvider>
       </body>
     </html>
