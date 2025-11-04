@@ -29,7 +29,7 @@ export function VoteClient() {
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      router.push('/login');
+      router.push('/');
     }
   }, [user, isUserLoading, router]);
   
@@ -71,32 +71,8 @@ export function VoteClient() {
     setIsSubmitting(false);
   };
   
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
     return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
-
-  if (!user) {
-    return (
-        <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)]">
-            <Card className="w-full max-w-lg text-center shadow-lg">
-                <CardHeader>
-                    <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit mb-2">
-                        <Vote className="h-10 w-10 text-primary" />
-                    </div>
-                    <CardTitle className="text-2xl font-headline mt-4">Welcome to eVoteChain</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <CardDescription className="text-lg mb-6">
-                        Please log in or register to cast your vote.
-                    </CardDescription>
-                    <div className="flex gap-4 justify-center">
-                        <Button asChild size="lg"><Link href="/login">Login</Link></Button>
-                        <Button asChild size="lg" variant="outline"><Link href="/register">Register</Link></Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    );
   }
 
   if (hasVoted) {
