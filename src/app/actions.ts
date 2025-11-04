@@ -12,15 +12,12 @@ import {
   setDoc,
   getDocs,
   query,
-  orderBy,
-  limit,
+  where,
   writeBatch,
   Timestamp,
-  where,
 } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
-import { analyzeVotingPatterns } from "@/ai/flows/analyze-voting-patterns-for-fraud";
 import { revalidatePath } from "next/cache";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
@@ -306,67 +303,3 @@ export async function getBlockchainData(): Promise<Block[]> {
     // Return in descending order of time for the page
     return blocks.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
-
-// --- AI ACTION ---
-export async function runFraudAnalysis(): Promise<
-  FraudAnalysisOutput | { success: false; error: string }
-> {
-  try {
-    const blockchainData = await getBlockchainData();
-
-    if (blockchainData.length === 0) {
-      return {
-        isSuspiciousActivity: false,
-        explanation: "No votes have been cast yet. The blockchain is empty.",
-        flaggedVoterIds: [],
-      };
-    }
-
-    const votingDataForAI = blockchainData.flatMap((block) =>
-      block.votes.map((vote) => ({
-        voterId: vote.voterId,
-        vote: vote.encryptedVoteData,
-        timestamp: vote.timestamp,
-      }))
-    );
-
-    const analysis = await analyzeVotingPatterns({
-      votingData: votingDataForAI,
-    });
-
-    if (analysis.isSuspiciousActivity && analysis.flaggedVoterIds.length > 0) {
-      const db = getDb();
-      const batch = writeBatch(db);
-      analysis.flaggedVoterIds.forEach((voterId) => {
-        const activityId = doc(collection(db, "fraudulent_activities")).id;
-        const fraudRef = doc(db, "fraudulent_activities", activityId);
-        const fraudData = {
-          id: activityId,
-          voterId: voterId,
-          timestamp: Timestamp.now().toDate().toISOString(),
-          description: analysis.explanation,
-          confidenceScore: 0.9, // Example score
-        };
-        batch.set(fraudRef, fraudData);
-      });
-      await batch.commit();
-    }
-
-    return analysis;
-  } catch (error: any) {
-    if (error.code === "permission-denied") {
-      console.error(
-        "Firestore Permission Denied on fraud analysis:",
-        error.message
-      );
-      return {
-        success: false,
-        error: "You do not have permission to run fraud analysis.",
-      };
-    }
-    console.error("Fraud analysis error:", error);
-    return { success: false, error: "An unexpected error occurred during fraud analysis." };
-  }
-}
-type FraudAnalysisOutput =
-  import("@/ai/flows/analyze-voting-patterns-for-fraud").FraudAnalysisOutput;

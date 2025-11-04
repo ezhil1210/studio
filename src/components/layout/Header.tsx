@@ -22,7 +22,6 @@ const navLinks = [
   { href: "/vote", label: "Vote" },
   { href: "/results", label: "Results" },
   { href: "/blockchain", label: "Blockchain" },
-  { href: "/fraud-detection", label: "Fraud Detection" },
 ];
 
 export default function Header() {
