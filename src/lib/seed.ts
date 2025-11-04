@@ -12,82 +12,96 @@ initializeApp({
 
 
 const db = getFirestore();
+const candidates = ["Candidate Alpha", "Candidate Bravo", "Candidate Charlie"];
 
-async function seedSampleVotes() {
-    console.log("Starting to seed database...");
-    const batch: WriteBatch = db.batch();
-    const candidates = ["Candidate Alpha", "Candidate Bravo", "Candidate Charlie"];
+// Helper function to sleep for a given time
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    try {
-        const blocksSnapshot = await db.collection("blocks").limit(1).get();
-        if (!blocksSnapshot.empty) {
-            console.log("Database already contains votes. Seeding aborted.");
-            return;
+async function castSingleVote(previousBlockHash: string, lastTimestamp: number, voterIndex: number): Promise<{ newHash: string, newTimestamp: number }> {
+    const batch = db.batch();
+    
+    const blockId = db.collection('blocks').doc().id;
+    const voterId = `sim-voter-${voterIndex}`;
+    const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+    
+    const currentTimestampMs = lastTimestamp + (Math.random() * 2000 + 500); // Add 0.5 to 2.5 seconds
+    const currentTimestamp = new Date(currentTimestampMs).toISOString();
+
+    const voteId = db.collection('blocks').doc(blockId).collection('votes').doc().id;
+    const newVote = {
+        id: voteId,
+        voterId: voterId,
+        encryptedVoteData: candidate,
+        timestamp: currentTimestamp,
+        blockId: blockId,
+    };
+
+    const newBlockData = {
+        id: blockId,
+        timestamp: newVote.timestamp,
+        previousBlockHash: previousBlockHash,
+        voteIds: [newVote.id],
+        voterIds: [voterId],
+        hash: "",
+    };
+
+    const blockContentForHashing = {
+        id: newBlockData.id,
+        timestamp: newBlockData.timestamp,
+        previousBlockHash: newBlockData.previousBlockHash,
+        voteIds: newBlockData.voteIds,
+        voterIds: newBlockData.voterIds,
+    };
+    
+    const hash = createHash("sha256").update(JSON.stringify(blockContentForHashing)).digest("hex");
+    newBlockData.hash = hash;
+
+    // Add block and vote to the batch
+    const newBlockRef = db.collection("blocks").doc(newBlockData.id);
+    batch.set(newBlockRef, newBlockData);
+    const newVoteRef = db.doc(`blocks/${newBlockData.id}/votes/${newVote.id}`);
+    batch.set(newVoteRef, newVote);
+    
+    await batch.commit();
+    console.log(`Vote cast for ${candidate} by ${voterId}`);
+
+    return { newHash: hash, newTimestamp: currentTimestampMs };
+}
+
+
+async function startLiveSeeding() {
+    console.log("Starting live vote simulation...");
+    let previousBlockHash = "0".repeat(64);
+    let lastTimestamp = Date.now();
+    let voterIndex = 0;
+
+    // Fetch the last block to continue the chain
+    const lastBlockQuery = await db.collection("blocks").orderBy("timestamp", "desc").limit(1).get();
+    if (!lastBlockQuery.empty) {
+        const lastBlock = lastBlockQuery.docs[0].data();
+        previousBlockHash = lastBlock.hash;
+        lastTimestamp = new Date(lastBlock.timestamp).getTime();
+        console.log("Resuming chain from last known block.");
+    } else {
+        console.log("No existing blocks found. Starting new chain (Genesis).");
+    }
+
+    // Run indefinitely
+    while (true) {
+        try {
+            const { newHash, newTimestamp } = await castSingleVote(previousBlockHash, lastTimestamp, voterIndex);
+            previousBlockHash = newHash;
+            lastTimestamp = newTimestamp;
+            voterIndex++;
+            await sleep(2000); // Wait 2 seconds before casting the next vote
+        } catch (error) {
+            console.error("Error during live seeding:", error);
+            await sleep(5000); // Wait longer if there's an error
         }
-        console.log("No existing votes found. Proceeding with seeding.");
-
-        let previousBlockHash = "0".repeat(64);
-        let lastTimestamp = Timestamp.now().toMillis();
-
-        for (let i = 0; i < 15; i++) {
-            const blockId = db.collection('blocks').doc().id;
-            const voterId = `sample-voter-${i}`;
-            const candidate = candidates[i % candidates.length];
-            
-            lastTimestamp += 1000 * 60 * (Math.random() * 5 + 1); // Add 1-6 minutes
-            const currentTimestamp = new Date(lastTimestamp).toISOString();
-
-            const voteId = db.collection('blocks').doc(blockId).collection('votes').doc().id;
-            const newVote = {
-                id: voteId,
-                voterId: voterId,
-                encryptedVoteData: candidate,
-                timestamp: currentTimestamp,
-                blockId: blockId,
-            };
-
-            const newBlockData = {
-                id: blockId,
-                timestamp: newVote.timestamp,
-                previousBlockHash: previousBlockHash,
-                voteIds: [newVote.id],
-                voterIds: [voterId],
-                hash: "",
-            };
-
-            const blockContentForHashing = {
-                id: newBlockData.id,
-                timestamp: newBlockData.timestamp,
-                previousBlockHash: newBlockData.previousBlockHash,
-                voteIds: newBlockData.voteIds,
-                voterIds: newBlockData.voterIds,
-            };
-            
-            const hash = createHash("sha256").update(JSON.stringify(blockContentForHashing)).digest("hex");
-            newBlockData.hash = hash;
-            previousBlockHash = hash;
-
-            // Add block and vote to the batch
-            const newBlockRef = db.collection("blocks").doc(newBlockData.id);
-            batch.set(newBlockRef, newBlockData);
-            const newVoteRef = db.doc(`blocks/${newBlockData.id}/votes/${newVote.id}`);
-            batch.set(newVoteRef, newVote);
-            
-            console.log(`Prepared vote for ${voterId} for ${candidate}`);
-        }
-
-        await batch.commit();
-        console.log("Successfully seeded 15 sample votes into the database.");
-    } catch (error: any) {
-        console.error("Error seeding votes:", error);
-        process.exit(1);
     }
 }
 
-seedSampleVotes().then(() => {
-    console.log("Database seeding script finished.");
-    process.exit(0);
-}).catch(e => {
-    console.error(e);
+startLiveSeeding().catch(e => {
+    console.error("Failed to start live seeding:", e);
     process.exit(1);
 });
