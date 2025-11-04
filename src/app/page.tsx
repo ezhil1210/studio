@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock, BarChart, Blocks } from 'lucide-react';
@@ -8,17 +9,17 @@ const features = [
   {
     icon: <Lock className="h-10 w-10 text-primary" />,
     title: 'Secure Voting',
-    description: 'Each vote is encrypted and securely stored, ensuring voter privacy and data integrity.',
+    description: 'Each vote is encrypted and securely stored, ensuring voter privacy and data integrity. Our system uses advanced cryptographic techniques to protect every vote from the moment it\'s cast to the final tally. This end-to-end encryption means your choice remains confidential and cannot be tampered with, guaranteeing the security and legitimacy of the election process.',
   },
   {
     icon: <Blocks className="h-10 w-10 text-primary" />,
     title: 'Transparent Ledger',
-    description: 'All votes are recorded on an immutable blockchain, providing a transparent and auditable trail.',
+    description: 'All votes are recorded on an immutable blockchain, providing a transparent and auditable trail. Every verified vote becomes a permanent part of the blockchain record, which can be publicly audited. This creates an unprecedented level of transparency, allowing anyone to verify the election\'s integrity without compromising voter anonymity.',
   },
   {
     icon: <BarChart className="h-10 w-10 text-primary" />,
     title: 'Real-Time Results',
-    description: 'Watch the results update live as votes are cast and verified on the blockchain.',
+    description: 'Watch the results update live as votes are cast and verified on the blockchain. Because each vote is recorded on the distributed ledger in real-time, results can be tallied and displayed instantly and accurately. This eliminates lengthy waiting periods and provides immediate, trustworthy outcomes that are backed by the blockchain\'s verifiable data.',
   },
 ];
 
@@ -54,28 +55,28 @@ export default function Home() {
 
         {/* Features Section */}
         <section id="features" className="w-full py-20 md:py-32 bg-muted/40">
-          <div className="px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-16">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose eVoteChain?</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                     Our platform leverages cutting-edge technology to bring trust and transparency back to the voting process.
                 </p>
             </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3">
-              {features.map((feature) => (
-                <Card key={feature.title} className="text-center h-full hover:shadow-xl transition-shadow duration-300 border-0 bg-card/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-accent/20 mb-4 ring-2 ring-primary/10">
-                        {feature.icon}
+            <div className="mx-auto max-w-5xl space-y-20">
+              {features.map((feature, index) => (
+                <div key={feature.title} className="grid md:grid-cols-2 gap-12 items-center">
+                  <div className={`flex justify-center ${index % 2 === 1 ? 'md:order-last' : ''}`}>
+                    <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-accent/20 ring-4 ring-primary/10">
+                      {React.cloneElement(feature.icon, { className: "h-24 w-24 text-primary" })}
                     </div>
-                    <CardTitle className="text-xl">{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription>
+                  </div>
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-bold">{feature.title}</h3>
+                    <p className="text-muted-foreground text-lg">
                       {feature.description}
-                    </CardDescription>
-                  </CardContent>
-                </Card>
+                    </p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
