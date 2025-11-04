@@ -4,7 +4,6 @@ import './globals.css';
 import Header from '@/components/layout/Header';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { UserProvider } from '@/context/UserContext';
 
 export const metadata: Metadata = {
   title: 'eVoteChain',
@@ -28,7 +27,6 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
-          <UserProvider>
             <div className="relative flex min-h-screen w-full flex-col bg-background">
               <Header />
               <main className="flex flex-1 flex-col items-center">
@@ -36,7 +34,6 @@ export default function RootLayout({
               </main>
             </div>
             <Toaster />
-          </UserProvider>
         </FirebaseClientProvider>
       </body>
     </html>

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { castVote } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, CheckCircle, Star, Heart, Triangle } from "lucide-react";
-import { useUserContext } from "@/context/UserContext";
+import { useUser } from "@/firebase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -25,7 +25,7 @@ export function VoteClient() {
   const { toast } = useToast();
   const router = useRouter();
   
-  const { user, isLoading: isUserLoading } = useUserContext();
+  const { user, isUserLoading } = useUser();
   
   const handleVote = async () => {
     if (!selectedCandidate) {

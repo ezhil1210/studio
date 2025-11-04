@@ -14,9 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, Vote, Loader2 } from "lucide-react";
-import { useUserContext } from "@/context/UserContext";
+import { useUser, useAuth } from "@/firebase";
 import { logoutUser } from "@/app/actions";
-import { useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
 
 const navLinks = [
@@ -26,16 +25,18 @@ const navLinks = [
 ];
 
 export default function Header() {
-  const { user, isLoading } = useUserContext();
+  const { user, isUserLoading } = useUser();
   const auth = useAuth();
 
   const handleLogout = async () => {
     // Pass the UID to the server action so it can delete the anonymous user if needed.
     await logoutUser(user?.uid || null);
 
-    // Also sign out on the client, just in case.
-    await signOut(auth);
-
+    // Also sign out on the client.
+    if (auth) {
+        await signOut(auth);
+    }
+    
     // Force a full page reload to clear all client-side state.
     window.location.href = '/';
   };
@@ -98,7 +99,7 @@ export default function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-          {isLoading ? (
+          {isUserLoading ? (
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           ) : user ? (
             <DropdownMenu>

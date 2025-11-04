@@ -10,13 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
-import { useUserContext } from "@/context/UserContext";
+import { useUser } from "@/firebase";
 
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isDemoLoading, setIsDemoLoading] = useState(false);
-  const { user, isLoading: isUserLoading } = useUserContext();
+  const { user, isUserLoading } = useUser();
 
   useEffect(() => {
     // Only redirect if auth state is fully loaded and a user exists.

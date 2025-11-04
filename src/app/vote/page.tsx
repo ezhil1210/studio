@@ -2,15 +2,15 @@
 'use client';
 
 import { VoteClient } from "@/components/VoteClient";
-import { useUserContext } from "@/context/UserContext";
+import { useUser } from "@/firebase";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function VotePage() {
-  const { user, isLoading } = useUserContext();
+  const { user, isUserLoading } = useUser();
 
-  if (isLoading) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

@@ -2,12 +2,10 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useCollection } from '@/firebase';
+import { useCollection, useUser, useFirestore } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { useUserContext } from '@/context/UserContext';
 
 
 type Vote = {
@@ -30,7 +28,7 @@ type Block = {
 
 export default function BlockchainPage() {
   const firestore = useFirestore();
-  const { isLoading: isUserLoading } = useUserContext();
+  const { isUserLoading } = useUser();
 
   const blocksQuery = useMemo(() => {
     if (!firestore) return null;

@@ -12,8 +12,7 @@ import {
 } from '@/components/ui/card';
 import { BarChart, Loader2 } from 'lucide-react';
 import { collection, query, getDocs } from 'firebase/firestore';
-import { useFirestore, useCollection } from '@/firebase';
-import { useUserContext } from '@/context/UserContext';
+import { useFirestore, useCollection, useUser } from '@/firebase';
 
 
 type ChartData = { name: string; votes: number }[];
@@ -30,7 +29,7 @@ type Block = {
 export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, number> | null>(null);
   const firestore = useFirestore();
-  const { isLoading: isUserLoading } = useUserContext();
+  const { isUserLoading } = useUser();
   
   const blocksQuery = useMemo(() => {
     if (!firestore) return null;
