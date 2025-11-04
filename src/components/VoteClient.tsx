@@ -87,7 +87,7 @@ export function VoteClient() {
           </CardHeader>
           <CardContent>
             <CardDescription className="text-lg">
-              Your vote has been securely recorded on the blockchain. Refresh the page to vote again.
+              Your vote has been securely recorded on the blockchain.
             </CardDescription>
           </CardContent>
         </Card>
