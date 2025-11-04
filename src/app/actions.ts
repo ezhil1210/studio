@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword,
   signInAnonymously,
   deleteUser,
+  updateProfile,
 } from "firebase/auth";
 import {
   collection,
@@ -72,6 +73,9 @@ export async function registerUser(values: RegisterSchema): Promise<ActionResult
       values.password
     );
     const user = userCredential.user;
+
+    // Set the user's display name
+    await updateProfile(user, { displayName: values.name });
 
     const db = getDb();
     const voterDocRef = doc(db, "voters", user.uid);
@@ -149,6 +153,14 @@ export async function castVote({
   const db = getDb();
 
   try {
+    // Check if user has already voted by checking for their voterId in all blocks
+    const blocksQuery = query(collection(db, "blocks"), where("voterIds", "array-contains", uid));
+    const userVoteSnap = await getDocs(blocksQuery);
+    if (!userVoteSnap.empty) {
+        return { success: false, error: "You have already cast your vote." };
+    }
+
+
     const lastBlockQuery = query(
       collection(db, "blocks"),
       orderBy("timestamp", "desc"),
