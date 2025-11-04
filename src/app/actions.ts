@@ -5,6 +5,7 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInAnonymously,
 } from "firebase/auth";
 import {
   collection,
@@ -49,6 +50,16 @@ function getDb() {
 }
 
 // --- AUTH ACTIONS ---
+
+export async function demoLogin(): Promise<ActionResult> {
+  try {
+    const auth = getFirebaseAuth();
+    const userCredential = await signInAnonymously(auth);
+    return { success: true, uid: userCredential.user.uid };
+  } catch (error: any) {
+    return { success: false, error: "Anonymous sign-in failed." };
+  }
+}
 
 export async function registerUser(values: RegisterSchema): Promise<ActionResult> {
   try {
@@ -138,6 +149,12 @@ export async function castVote({
   const db = getDb();
 
   try {
+    // This check is removed to allow multiple votes for prototyping
+    // const { hasVoted } = await getVoterStatus(uid);
+    // if (hasVoted) {
+    //   return { success: false, error: "You have already voted." };
+    // }
+
     const lastBlockQuery = query(
       collection(db, "blocks"),
       orderBy("timestamp", "desc"),
