@@ -24,14 +24,9 @@ export default function ResultsPage() {
   const { user, isUserLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    if (!firestore || !user) return;
+    if (!firestore) return;
 
     // Initial fetch to prevent loading state if data is already there.
     getVoteResults().then(setResults);
@@ -48,10 +43,10 @@ export default function ResultsPage() {
     });
 
     return () => unsubscribe();
-  }, [firestore, user]);
+  }, [firestore]);
 
 
-  if (isUserLoading || !user) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

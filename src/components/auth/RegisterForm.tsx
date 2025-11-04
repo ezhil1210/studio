@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -44,7 +45,7 @@ export function RegisterForm() {
         title: "Registration Successful",
         description: "Please login to continue.",
       });
-      router.push("/login");
+      router.refresh(); // Refresh to update auth state
     } else {
       toast({
         variant: "destructive",

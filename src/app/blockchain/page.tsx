@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
@@ -32,11 +32,6 @@ export default function BlockchainPage() {
   const { user, isUserLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
   
   const blocksQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -45,7 +40,7 @@ export default function BlockchainPage() {
 
   const { data: blockchain, isLoading: isLoadingBlockchain } = useCollection<Block>(blocksQuery);
 
-  if (isUserLoading || !user) {
+  if (isUserLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
