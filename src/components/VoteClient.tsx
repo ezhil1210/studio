@@ -5,11 +5,11 @@ import { useState, useEffect } from "react";
 import { PlaceHolderImages, ImagePlaceholder } from "@/lib/placeholder-images";
 import Image from "next/image";
 import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { cn } from "@/lib/utils";
-import { castVote } from "@/app/actions";
+import { castVote, getVoterStatus } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 
@@ -23,16 +23,24 @@ export function VoteClient() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [candidateImages, setCandidateImages] = useState<Record<string, ImagePlaceholder>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasVoted, setHasVoted] = useState<boolean | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!isUserLoading && !user) {
       router.push("/login");
     }
-  }, [user, loading, router]);
+
+    if(user && hasVoted === null) {
+        getVoterStatus(user.uid).then(status => {
+            setHasVoted(status.hasVoted);
+        });
+    }
+
+  }, [user, isUserLoading, router, hasVoted]);
   
   useEffect(() => {
     const images = PlaceHolderImages.reduce((acc, img) => {
@@ -68,8 +76,7 @@ export function VoteClient() {
         title: "Vote Cast Successfully",
         description: "Your vote has been securely recorded.",
       });
-      // Force a re-render of the parent server component
-      router.refresh();
+      setHasVoted(true);
     } else {
       toast({
         variant: "destructive",
@@ -80,8 +87,28 @@ export function VoteClient() {
     }
   };
   
-  if (loading || !user) {
+  if (isUserLoading || !user || hasVoted === null) {
     return <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+
+  if (hasVoted) {
+    return (
+      <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Card className="w-full max-w-lg text-center shadow-lg">
+          <CardHeader>
+            <div className="mx-auto bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 rounded-full p-3 w-fit">
+              <CheckCircle className="h-10 w-10" />
+            </div>
+            <CardTitle className="text-2xl font-headline mt-4">Thank You for Voting</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription className="text-lg">
+              Your vote has been securely recorded on the blockchain.
+            </CardDescription>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

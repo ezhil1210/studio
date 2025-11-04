@@ -42,6 +42,9 @@ export function LoginForm() {
         title: "Login Successful",
         description: "Welcome back!",
       });
+      // Instead of router.push, we refresh. The useEffect in VoteClient will handle the redirection.
+      router.refresh(); 
+      // We can also push to ensure navigation, and the destination will handle its own auth state.
       router.push("/vote");
     } else {
       toast({

@@ -109,21 +109,6 @@ export async function logoutUser(): Promise<ActionResult> {
 
 // --- VOTING ACTIONS ---
 
-export async function getAuthenticatedUserUid(): Promise<string | null> {
-    const auth = getFirebaseAuth();
-    // This is problematic on server actions as currentUser is not reliable.
-    // A proper solution would involve session management (e.g., with cookies).
-    // For this prototype, we'll assume it might work in some environments but acknowledge its flaw.
-    // A better approach would be to get the UID on the client and pass it to server actions.
-    // Or manage sessions properly.
-    // For now, this is a placeholder for a more robust solution.
-    // Let's try to get it from the auth instance, but this is not guaranteed to work.
-    // A better way for server actions is to manage session cookies.
-    // Since we don't have that, we'll pass the UID from the client when needed.
-    // This function will be simplified to reflect it's not the right way for server actions.
-    return auth.currentUser?.uid || null;
-}
-
 export async function getVoterStatus(uid: string): Promise<{ hasVoted: boolean }> {
   if (!uid) {
     return { hasVoted: false };
