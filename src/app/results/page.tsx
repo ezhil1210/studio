@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getVoteResults } from '@/app/actions';
 import { ResultsChart } from '@/components/ResultsChart';
 import {
@@ -12,36 +12,61 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { BarChart, Loader2 } from 'lucide-react';
-import { onSnapshot, collection, query } from 'firebase/firestore';
-import { useFirestore, useAuth } from '@/firebase';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { useFirestore, useAuth, useCollection } from '@/firebase';
 
 type ChartData = { name: string; votes: number }[];
+
+type Vote = {
+  encryptedVoteData: string;
+};
+
+type Block = {
+  id: string;
+  voteIds: string[];
+};
 
 export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, number> | null>(null);
   const firestore = useFirestore();
   const { isUserLoading } = useAuth();
-
-  useEffect(() => {
-    if (!firestore) return;
-
-    // Initial fetch to prevent loading state if data is already there.
-    getVoteResults().then(setResults);
-
-    // Set up a real-time listener for all votes.
-    const blocksQuery = query(collection(firestore, 'blocks'));
-    
-    const unsubscribe = onSnapshot(blocksQuery, async () => {
-        // When a change is detected, re-fetch the aggregated results.
-        const updatedResults = await getVoteResults();
-        setResults(updatedResults);
-    }, (error) => {
-        console.error("Error listening to vote results:", error);
-    });
-
-    return () => unsubscribe();
+  
+  const blocksQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'blocks'));
   }, [firestore]);
 
+  const { data: blocks, isLoading: isLoadingBlocks } = useCollection<Block>(blocksQuery);
+
+  useEffect(() => {
+    async function aggregateResults() {
+      if (!blocks || !firestore) return;
+
+      const newResults: Record<string, number> = {
+        "Candidate Alpha": 0,
+        "Candidate Bravo": 0,
+        "Candidate Charlie": 0,
+      };
+
+      for (const block of blocks) {
+        try {
+            const votesQuery = query(collection(firestore, `blocks/${block.id}/votes`));
+            const votesSnapshot = await getDocs(votesQuery);
+            votesSnapshot.forEach(voteDoc => {
+                const voteData = voteDoc.data() as Vote;
+                if (voteData.encryptedVoteData in newResults) {
+                    newResults[voteData.encryptedVoteData]++;
+                }
+            });
+        } catch (error) {
+            console.error(`Could not fetch votes for block ${block.id}:`, error);
+        }
+      }
+      setResults(newResults);
+    }
+
+    aggregateResults();
+  }, [blocks, firestore]);
 
   if (isUserLoading) {
     return (
@@ -51,14 +76,14 @@ export default function ResultsPage() {
     );
   }
 
-  const isLoading = results === null;
+  const isLoading = results === null || isLoadingBlocks;
   const chartData: ChartData = results
     ? Object.entries(results).map(([name, votes]) => ({ name, votes }))
     : [];
   const totalVotes = chartData.reduce((sum, item) => sum + item.votes, 0);
 
   return (
-    <div className="p-4 md:p-8 w-full">
+    <div className="p-4 md:p-8 w-full max-w-7xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold font-headline">
           Live Election Results
