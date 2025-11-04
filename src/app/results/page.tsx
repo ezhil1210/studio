@@ -20,7 +20,6 @@ type ChartData = { name: string; votes: number }[];
 
 export default function ResultsPage() {
   const [results, setResults] = useState<Record<string, number> | null>(null);
-  const isLoading = results === null;
   const firestore = useFirebaseFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -60,7 +59,7 @@ export default function ResultsPage() {
     );
   }
 
-
+  const isLoading = results === null;
   const chartData: ChartData = results
     ? Object.entries(results).map(([name, votes]) => ({ name, votes }))
     : [];
