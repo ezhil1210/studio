@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Blocks, Lock, BarChartBig, PlayCircle } from "lucide-react";
 import Link from "next/link";
-import { SeedButton } from '@/components/SeedButton';
 
 export default function Home() {
   return (
@@ -26,7 +25,6 @@ export default function Home() {
                   Get Started
                 </Link>
               </Button>
-              <SeedButton />
             </div>
           </div>
         </div>
@@ -87,5 +85,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
