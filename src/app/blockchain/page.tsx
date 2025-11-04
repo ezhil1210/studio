@@ -1,12 +1,12 @@
 
 'use client';
 
-import React from 'react';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import React, { useMemo } from 'react';
+import { useCollection } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { useFirestore as useFirebaseFirestore, useAuth } from '@/firebase';
+import { useFirestore, useAuth } from '@/firebase';
 
 type Vote = {
   id: string;
@@ -27,10 +27,10 @@ type Block = {
 };
 
 export default function BlockchainPage() {
-  const firestore = useFirebaseFirestore();
+  const firestore = useFirestore();
   const { isUserLoading } = useAuth();
 
-  const blocksQuery = useMemoFirebase(() => {
+  const blocksQuery = useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'blocks'), orderBy('timestamp', 'desc'));
   }, [firestore]);
@@ -39,7 +39,7 @@ export default function BlockchainPage() {
 
   if (isUserLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
+      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -47,14 +47,14 @@ export default function BlockchainPage() {
   
   if (isLoadingBlockchain) {
      return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
+      <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 w-full">
+    <div className="p-4 md:p-8 w-full max-w-7xl">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold font-headline">Blockchain Ledger</h1>
         <p className="text-muted-foreground mt-2">
@@ -115,7 +115,7 @@ export default function BlockchainPage() {
                   </div>
                 </CardContent>
               </Card>
-              {index < blockchain.length - 1 && <div className="h-8 w-1 bg-border rounded-full" />}
+              {index < blockchain.length - 1 && <div className="h-8 w-1 bg-border rounded-full mx-auto" />}
             </div>
           ))}
         </div>
