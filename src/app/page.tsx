@@ -24,12 +24,12 @@ const features = [
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-[calc(100vh-3.5rem)]">
+    <div className="flex flex-col min-h-[calc(100vh-3.5rem)] w-full">
       <main className="flex-1">
         {/* Hero Section */}
         <section className="w-full py-20 md:py-32 lg:py-40 bg-background relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background"></div>
-          <div className="container px-4 md:px-6 text-center relative">
+          <div className="px-4 md:px-6 text-center relative">
             <div className="max-w-3xl mx-auto">
               <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-4">
                 The Future of Voting is Here
@@ -54,7 +54,7 @@ export default function Home() {
 
         {/* Features Section */}
         <section id="features" className="w-full py-20 md:py-32 bg-muted/40">
-          <div className="container px-4 md:px-6">
+          <div className="px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose eVoteChain?</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">

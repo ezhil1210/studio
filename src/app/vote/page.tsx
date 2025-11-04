@@ -18,7 +18,7 @@ export default function VotePage() {
   
   if (!user) {
     return (
-        <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
+        <div className="p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
              <div className="text-center">
                 <h1 className="text-2xl font-bold">Please Log In</h1>
                 <p className="text-muted-foreground mt-2">You need to be logged in to cast a vote.</p>

@@ -78,7 +78,7 @@ export function VoteClient() {
 
   if (hasVoted) {
     return (
-      <div className="container mx-auto p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
+      <div className="p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
         <Card className="w-full max-w-lg text-center shadow-2xl bg-card/80 backdrop-blur-sm border-0">
           <CardHeader>
             <div className="mx-auto bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 rounded-full p-3 w-fit">
@@ -105,7 +105,7 @@ export function VoteClient() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8 w-full">
+    <div className="p-4 md:p-8 w-full">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold">Cast Your Vote</h1>
         <p className="text-muted-foreground mt-2">Select your preferred candidate and submit your vote.</p>

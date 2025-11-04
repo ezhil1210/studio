@@ -54,7 +54,7 @@ export default function BlockchainPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-8 w-full">
+    <div className="p-4 md:p-8 w-full">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold font-headline">Blockchain Ledger</h1>
         <p className="text-muted-foreground mt-2">
@@ -79,7 +79,7 @@ export default function BlockchainPage() {
       ) : (
         <div className="flex flex-col items-center space-y-4">
           {blockchain.map((block, index) => (
-            <React.Fragment key={block.id}>
+            <div key={block.id}>
               <Card className="w-full max-w-2xl shadow-md transition-shadow hover:shadow-xl bg-card/80 backdrop-blur-sm border-0">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
@@ -116,7 +116,7 @@ export default function BlockchainPage() {
                 </CardContent>
               </Card>
               {index < blockchain.length - 1 && <div className="h-8 w-1 bg-border rounded-full" />}
-            </React.Fragment>
+            </div>
           ))}
         </div>
       )}

@@ -58,7 +58,7 @@ export default function ResultsPage() {
   const totalVotes = chartData.reduce((sum, item) => sum + item.votes, 0);
 
   return (
-    <div className="container mx-auto p-4 md:p-8 w-full">
+    <div className="p-4 md:p-8 w-full">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold font-headline">
           Live Election Results
