@@ -10,10 +10,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useUser } from "@/firebase";
+import { demoLogin } from "@/app/actions";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const { user, isUserLoading } = useUser();
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   useEffect(() => {
     // Only redirect if auth state is fully loaded and a user exists.
@@ -22,10 +25,19 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const handleDemoClick = () => {
-    // This button is on the login page, so clicking it will do nothing
-    // as per the request to "proceed to login page".
-    router.push('/login');
+  const handleDemoClick = async () => {
+    setIsDemoLoading(true);
+    const result = await demoLogin();
+    if (result.success) {
+      router.push('/vote');
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Demo Login Failed",
+        description: "Could not log in as a demo user. Please try again.",
+      });
+    }
+    setIsDemoLoading(false);
   };
 
   // While loading auth state, or if a user is already logged in (and useEffect is about to redirect), show a loader.
@@ -66,8 +78,9 @@ export default function LoginPage() {
             variant="outline"
             className="w-full"
             onClick={handleDemoClick}
+            disabled={isDemoLoading}
           >
-            Demo User
+            {isDemoLoading ? <Loader2 className="animate-spin" /> : "Demo User"}
           </Button>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
