@@ -6,7 +6,6 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInAnonymously,
-  deleteUser,
   updateProfile,
 } from "firebase/auth";
 import {
@@ -28,6 +27,8 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
 import { RegisterSchema } from "@/lib/schemas";
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { initializeApp as initializeAdminApp, getApps as getAdminApps, App } from 'firebase-admin/app';
 
 type ActionResult = {
   success: boolean;
@@ -35,7 +36,7 @@ type ActionResult = {
   uid?: string;
 };
 
-// Server-side Firebase initialization
+// Server-side Firebase initialization (for client-facing operations)
 function getFirebaseApp(): FirebaseApp {
   if (getApps().length) {
     return getApp();
@@ -50,6 +51,16 @@ function getFirebaseAuth() {
 function getDb() {
   return getFirestore(getFirebaseApp());
 }
+
+// --- Firebase Admin SDK Initialization ---
+function getFirebaseAdminApp(): App {
+    if (getAdminApps().length) {
+        return getAdminApps()[0]!;
+    }
+    // This will use the GOOGLE_APPLICATION_CREDENTIALS environment variable
+    return initializeAdminApp();
+}
+
 
 // --- AUTH ACTIONS ---
 
@@ -116,23 +127,26 @@ export async function loginUser({ email, password }: { email?: string; password?
 }
 
 
-export async function logoutUser(): Promise<ActionResult> {
+export async function logoutUser(uid: string | null): Promise<ActionResult> {
   try {
-    const auth = getFirebaseAuth();
-    const currentUser = auth.currentUser;
+     if (uid) {
+        const adminApp = getFirebaseAdminApp();
+        const adminAuth = getAdminAuth(adminApp);
+        const userRecord = await adminAuth.getUser(uid);
 
-    if (currentUser) {
-       if (currentUser.isAnonymous) {
-        await deleteUser(currentUser);
-      } else {
-        await signOut(auth);
-      }
-    }
-   
+        // A user is anonymous if they have no providers (e.g., no email/password, google, etc.)
+        if (userRecord.providerData.length === 0) {
+            await adminAuth.deleteUser(uid);
+        }
+     }
+     
+    // The client will handle actual sign out and redirect.
+    // The main purpose of this server action is to delete the anonymous user.
     return { success: true };
   } catch (error: any) {
     console.error("Logout failed:", error)
-    return { success: false, error: error.message };
+    // Don't block client logout even if server-side deletion fails
+    return { success: true, error: "Failed to delete anonymous user, but proceeding with logout." };
   }
 }
 
@@ -153,8 +167,10 @@ export async function castVote({
 
   try {
     // Check if user has already voted by checking for their voterId in all blocks
-    const blocksQuery = query(collection(db, "blocks"), where("voterIds", "array-contains", uid));
-    const userVoteSnap = await getDocs(blocksQuery);
+    const blocksRef = collection(db, "blocks");
+    const q = query(blocksRef, where("voterIds", "array-contains", uid));
+    const userVoteSnap = await getDocs(q);
+
     if (!userVoteSnap.empty) {
         return { success: false, error: "You have already cast your vote." };
     }

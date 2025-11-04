@@ -16,6 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, Vote, Loader2 } from "lucide-react";
 import { useUserContext } from "@/context/UserContext";
 import { logoutUser } from "@/app/actions";
+import { useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 
 const navLinks = [
   { href: "/vote", label: "Vote" },
@@ -25,9 +27,16 @@ const navLinks = [
 
 export default function Header() {
   const { user, isLoading } = useUserContext();
+  const auth = useAuth();
 
   const handleLogout = async () => {
-    await logoutUser();
+    // Pass the UID to the server action so it can delete the anonymous user if needed.
+    await logoutUser(user?.uid || null);
+
+    // Also sign out on the client, just in case.
+    await signOut(auth);
+
+    // Force a full page reload to clear all client-side state.
     window.location.href = '/';
   };
 
