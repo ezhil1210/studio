@@ -26,11 +26,12 @@ import { revalidatePath } from "next/cache";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
-import { RegisterSchema } from "@/lib/schemas";
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { initializeApp as initializeAdminApp, getApps as getAdminApps, App } from 'firebase-admin/app';
 import { verifyFace } from "@/ai/flows/verify-face-flow";
+import { FaceMatchInput, FaceMatchOutput, RegisterSchema } from "@/lib/schemas";
+
 
 type ActionResult = {
   success: boolean;
@@ -59,8 +60,12 @@ function getFirebaseAdminApp(): App {
     if (getAdminApps().length) {
         return getAdminApps()[0]!;
     }
-    // This will use the GOOGLE_APPLICATION_CREDENTIALS environment variable
-    return initializeAdminApp();
+    // This will use the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+    // Explicitly providing the projectId helps the SDK locate the correct
+    // project credentials in the App Hosting environment.
+    return initializeAdminApp({
+        projectId: firebaseConfig.projectId
+    });
 }
 
 
@@ -341,5 +346,7 @@ export async function getBlockchainData(): Promise<Block[]> {
   
   return blocks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
+
+    
 
     
