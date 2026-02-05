@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, UserCheck } from "lucide-react";
 import { useUser } from "@/firebase";
 import { demoLogin } from "@/app/actions";
 
@@ -74,14 +74,20 @@ export default function LoginPage() {
                   </span>
               </div>
           </div>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleDemoClick}
-            disabled={isDemoLoading}
-          >
-            {isDemoLoading ? <Loader2 className="animate-spin" /> : "Demo User"}
-          </Button>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDemoClick}
+              disabled={isDemoLoading}
+            >
+              {isDemoLoading ? <Loader2 className="animate-spin" /> : <><User className="mr-2"/> Demo User</>}
+            </Button>
+            <Button variant="outline" asChild>
+                <Link href="/login/face"><UserCheck className="mr-2"/> Face Login</Link>
+            </Button>
+          </div>
+
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="font-semibold text-primary hover:underline">

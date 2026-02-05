@@ -28,6 +28,7 @@ import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
 import { RegisterSchema } from "@/lib/schemas";
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { initializeApp as initializeAdminApp, getApps as getAdminApps, App } from 'firebase-admin/app';
 
 type ActionResult = {
@@ -89,13 +90,17 @@ export async function registerUser(values: RegisterSchema): Promise<ActionResult
 
     const db = getDb();
     const voterDocRef = doc(db, "voters", user.uid);
-    await setDoc(voterDocRef, {
+    
+    const newVoter = {
       id: user.uid,
       name: values.name,
       email: values.email,
       hashedVoterId: createHash("sha256").update(values.voterId).digest("hex"),
       registrationDate: Timestamp.now().toDate().toISOString(),
-    });
+      ...(values.faceImage && { faceImage: values.faceImage }),
+    };
+
+    await setDoc(voterDocRef, newVoter);
 
     return { success: true, uid: user.uid };
   } catch (error: any) {
@@ -123,6 +128,34 @@ export async function loginUser({ email, password }: { email?: string; password?
       errorMessage = "Invalid email or password.";
     }
     return { success: false, error: errorMessage };
+  }
+}
+
+export async function loginWithFace({ email }: { email: string; }): Promise<{success: boolean; token?: string; error?: string;}> {
+  try {
+    const adminApp = getFirebaseAdminApp();
+    const adminAuth = getAdminAuth(adminApp);
+    const userRecord = await adminAuth.getUserByEmail(email);
+
+    const adminDb = getAdminFirestore();
+    const voterDoc = await adminDb.collection('voters').doc(userRecord.uid).get();
+
+    if (!voterDoc.exists || !voterDoc.data()?.faceImage) {
+      return { success: false, error: 'No face registration found for this user. Please register with your face first or use your password.' };
+    }
+
+    // "Verification" is simulated by checking if a face image exists.
+    // In a real app, this is where you'd compare facial embeddings.
+
+    const customToken = await adminAuth.createCustomToken(userRecord.uid);
+    return { success: true, token: customToken };
+
+  } catch (error: any) {
+    if (error.code === 'auth/user-not-found') {
+        return { success: false, error: "No user found with this email address." };
+    }
+    console.error("Face login error:", error);
+    return { success: false, error: 'An unexpected error occurred during face login.' };
   }
 }
 

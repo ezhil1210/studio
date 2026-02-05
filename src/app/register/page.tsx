@@ -9,7 +9,7 @@ export default function RegisterPage() {
        <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:6rem_4rem]">
         <div className="absolute bottom-0 left-0 right-0 top-0 bg-[radial-gradient(circle_500px_at_50%_200px,hsl(var(--accent)/0.1),transparent)]"></div>
       </div>
-      <Card className="w-full max-w-sm border-0 shadow-2xl shadow-accent/10 bg-card/80 backdrop-blur-sm">
+      <Card className="w-full max-w-lg border-0 shadow-2xl shadow-accent/10 bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
           <CardDescription>
