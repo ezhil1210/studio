@@ -4,24 +4,11 @@
  * @fileOverview A flow to verify if two face images match.
  *
  * - verifyFace - A function that handles the face verification process.
- * - FaceMatchInput - The input type for the verifyFace function.
- * - FaceMatchOutput - The return type for the verifyFace function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-
-// This schema defines the direct inputs for the AI comparison.
-export const FaceMatchInputSchema = z.object({
-  registeredImage: z.string().describe("The original face image the user registered with, as a data URI."),
-  capturedFaceImage: z.string().describe("The new face image captured during login, as a data URI."),
-});
-export type FaceMatchInput = z.infer<typeof FaceMatchInputSchema>;
-
-export const FaceMatchOutputSchema = z.object({
-  isMatch: z.boolean().describe('Whether the new face image matches the registered one.'),
-});
-export type FaceMatchOutput = z.infer<typeof FaceMatchOutputSchema>;
+import { FaceMatchInputSchema, FaceMatchOutputSchema, type FaceMatchInput, type FaceMatchOutput } from '@/lib/schemas';
 
 
 const verifyFacePrompt = ai.definePrompt({

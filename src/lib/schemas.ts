@@ -23,13 +23,13 @@ export const loginSchema = z.object({
 
 export type LoginSchema = z.infer<typeof loginSchema>;
 
-export const VerifyFaceInputSchema = z.object({
-  email: z.string().email().describe("The user's email address."),
-  capturedFaceImage: z.string().describe("A new photo of the user's face, as a data URI."),
+export const FaceMatchInputSchema = z.object({
+  registeredImage: z.string().describe("The original face image the user registered with, as a data URI."),
+  capturedFaceImage: z.string().describe("The new face image captured during login, as a data URI."),
 });
-export type VerifyFaceInput = z.infer<typeof VerifyFaceInputSchema>;
+export type FaceMatchInput = z.infer<typeof FaceMatchInputSchema>;
 
-export const VerifyFaceOutputSchema = z.object({
+export const FaceMatchOutputSchema = z.object({
   isMatch: z.boolean().describe('Whether the new face image matches the registered one.'),
 });
-export type VerifyFaceOutput = z.infer<typeof VerifyFaceOutputSchema>;
+export type FaceMatchOutput = z.infer<typeof FaceMatchOutputSchema>;
