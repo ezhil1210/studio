@@ -26,11 +26,7 @@ import { revalidatePath } from "next/cache";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import { initializeApp as initializeAdminApp, getApps as getAdminApps, App } from 'firebase-admin/app';
-import { verifyFace } from "@/ai/flows/verify-face-flow";
-import { FaceMatchInput, FaceMatchOutput, RegisterSchema } from "@/lib/schemas";
+import { RegisterSchema } from "@/lib/schemas";
 
 
 type ActionResult = {
@@ -54,18 +50,6 @@ function getFirebaseAuth() {
 function getDb() {
   return getFirestore(getFirebaseApp());
 }
-
-// --- Firebase Admin SDK Initialization ---
-function getFirebaseAdminApp(): App {
-    if (getAdminApps().length > 0) {
-        return getAdminApps()[0]!;
-    }
-    // In a managed environment like Firebase App Hosting,
-    // initializeAdminApp() without arguments automatically discovers
-    // the project's configuration and credentials.
-    return initializeAdminApp();
-}
-
 
 // --- AUTH ACTIONS ---
 
@@ -137,7 +121,19 @@ export async function loginUser({ email, password }: { email?: string; password?
 
 export async function loginWithFace({ email, capturedImage }: { email: string; capturedImage: string; }): Promise<{success: boolean; token?: string; error?: string;}> {
   try {
-    const adminApp = getFirebaseAdminApp();
+    const { getAuth: getAdminAuth } = await import('firebase-admin/auth');
+    const { getFirestore: getAdminFirestore } = await import('firebase-admin/firestore');
+    const { initializeApp: initializeAdminApp, getApps: getAdminApps } = await import('firebase-admin/app');
+    type App = import('firebase-admin/app').App;
+    const { verifyFace } = await import('@/ai/flows/verify-face-flow');
+
+    let adminApp: App;
+    if (getAdminApps().length > 0) {
+        adminApp = getAdminApps()[0]!;
+    } else {
+        adminApp = initializeAdminApp();
+    }
+    
     const adminAuth = getAdminAuth(adminApp);
     const adminDb = getAdminFirestore(adminApp);
 
@@ -152,7 +148,7 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
     }
     const registeredImage = voterDoc.data()?.faceImage;
 
-    // 3. AI-powered face verification by calling the refactored flow
+    // 3. AI-powered face verification
     const verificationResult = await verifyFace({
       registeredImage: registeredImage,
       capturedFaceImage: capturedImage,
@@ -171,7 +167,6 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
     if (error.code === 'auth/user-not-found') {
         return { success: false, error: "No user found with this email address." };
     }
-    // Return a more informative error message if available
     const errorMessage = error.message || 'An unexpected error occurred during face login.';
     return { success: false, error: errorMessage };
   }
@@ -180,10 +175,18 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
 
 export async function logoutUser(uid: string | null): Promise<ActionResult> {
   try {
-    // Temporarily disabled to isolate Admin SDK initialization issues
-    /*
      if (uid) {
-        const adminApp = getFirebaseAdminApp();
+        const { getAuth: getAdminAuth } = await import('firebase-admin/auth');
+        const { initializeApp: initializeAdminApp, getApps: getAdminApps } = await import('firebase-admin/app');
+        type App = import('firebase-admin/app').App;
+
+        let adminApp: App;
+        if (getAdminApps().length > 0) {
+            adminApp = getAdminApps()[0]!;
+        } else {
+            adminApp = initializeAdminApp();
+        }
+        
         const adminAuth = getAdminAuth(adminApp);
         const userRecord = await adminAuth.getUser(uid);
 
@@ -192,10 +195,8 @@ export async function logoutUser(uid: string | null): Promise<ActionResult> {
             await adminAuth.deleteUser(uid);
         }
      }
-    */
      
     // The client will handle actual sign out and redirect.
-    // The main purpose of this server action is to delete the anonymous user.
     return { success: true };
   } catch (error: any) {
     console.error("Logout failed:", error)
@@ -347,3 +348,5 @@ export async function getBlockchainData(): Promise<Block[]> {
   
   return blocks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
+
+    
