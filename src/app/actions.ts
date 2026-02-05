@@ -57,15 +57,13 @@ function getDb() {
 
 // --- Firebase Admin SDK Initialization ---
 function getFirebaseAdminApp(): App {
-    if (getAdminApps().length) {
+    if (getAdminApps().length > 0) {
         return getAdminApps()[0]!;
     }
-    // This will use the GOOGLE_APPLICATION_CREDENTIALS environment variable.
-    // Explicitly providing the projectId helps the SDK locate the correct
-    // project credentials in the App Hosting environment.
-    return initializeAdminApp({
-        projectId: firebaseConfig.projectId
-    });
+    // In a managed environment like Firebase App Hosting,
+    // initializeAdminApp() without arguments automatically discovers
+    // the project's configuration and credentials.
+    return initializeAdminApp();
 }
 
 
