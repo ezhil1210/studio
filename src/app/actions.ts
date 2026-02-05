@@ -136,11 +136,22 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
   try {
     const adminApp = getFirebaseAdminApp();
     const adminAuth = getAdminAuth(adminApp);
+    const adminDb = getAdminFirestore(adminApp);
+
+    // 1. Get User
     const userRecord = await adminAuth.getUserByEmail(email);
 
-    // AI-powered face verification
+    // 2. Get registered face image from Firestore
+    const voterDoc = await adminDb.collection('voters').doc(userRecord.uid).get();
+
+    if (!voterDoc.exists() || !voterDoc.data()?.faceImage) {
+        return { success: false, error: 'No face registration found for this user. Please register with your face first or use your password.' };
+    }
+    const registeredImage = voterDoc.data()?.faceImage;
+
+    // 3. AI-powered face verification by calling the refactored flow
     const verificationResult = await verifyFace({
-      email,
+      registeredImage: registeredImage,
       capturedFaceImage: capturedImage,
     });
 
@@ -148,20 +159,18 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
         return { success: false, error: 'Face verification failed. The provided image does not match the registered profile.' };
     }
 
-    // If verification is successful, create a custom token
+    // 4. If verification is successful, create a custom token
     const customToken = await adminAuth.createCustomToken(userRecord.uid);
     return { success: true, token: customToken };
 
   } catch (error: any) {
+    console.error("Face login error:", error);
     if (error.code === 'auth/user-not-found') {
         return { success: false, error: "No user found with this email address." };
     }
-    // Handle specific error from the flow if no image is registered
-    if (error.message.includes('No registered face image')) {
-        return { success: false, error: 'No face registration found for this user. Please register with your face first or use your password.' };
-    }
-    console.error("Face login error:", error);
-    return { success: false, error: 'An unexpected error occurred during face login.' };
+    // Return a more informative error message if available
+    const errorMessage = error.message || 'An unexpected error occurred during face login.';
+    return { success: false, error: errorMessage };
   }
 }
 
