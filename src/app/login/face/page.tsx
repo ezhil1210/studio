@@ -88,7 +88,7 @@ export default function FaceLoginPage() {
 
     setIsLoading(true);
 
-    const result = await loginWithFace({ email });
+    const result = await loginWithFace({ email, capturedImage });
 
     if (result.success && result.token && auth) {
       try {
@@ -140,7 +140,7 @@ export default function FaceLoginPage() {
           </div>
 
           <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
-            <video ref={videoRef} className={cn("w-full h-full object-cover", (!hasCameraPermission || capturedImage) && "hidden")} autoPlay muted playsInline />
+            <video ref={videoRef} className={cn("w-full h-full object-cover", capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
             {capturedImage && (
                 <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
             )}

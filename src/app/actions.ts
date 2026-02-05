@@ -30,6 +30,7 @@ import { RegisterSchema } from "@/lib/schemas";
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { initializeApp as initializeAdminApp, getApps as getAdminApps, App } from 'firebase-admin/app';
+import { verifyFace } from "@/ai/flows/verify-face-flow";
 
 type ActionResult = {
   success: boolean;
@@ -131,28 +132,33 @@ export async function loginUser({ email, password }: { email?: string; password?
   }
 }
 
-export async function loginWithFace({ email }: { email: string; }): Promise<{success: boolean; token?: string; error?: string;}> {
+export async function loginWithFace({ email, capturedImage }: { email: string; capturedImage: string; }): Promise<{success: boolean; token?: string; error?: string;}> {
   try {
     const adminApp = getFirebaseAdminApp();
     const adminAuth = getAdminAuth(adminApp);
     const userRecord = await adminAuth.getUserByEmail(email);
 
-    const adminDb = getAdminFirestore();
-    const voterDoc = await adminDb.collection('voters').doc(userRecord.uid).get();
+    // AI-powered face verification
+    const verificationResult = await verifyFace({
+      email,
+      capturedFaceImage: capturedImage,
+    });
 
-    if (!voterDoc.exists || !voterDoc.data()?.faceImage) {
-      return { success: false, error: 'No face registration found for this user. Please register with your face first or use your password.' };
+    if (!verificationResult.isMatch) {
+        return { success: false, error: 'Face verification failed. The provided image does not match the registered profile.' };
     }
 
-    // "Verification" is simulated by checking if a face image exists.
-    // In a real app, this is where you'd compare facial embeddings.
-
+    // If verification is successful, create a custom token
     const customToken = await adminAuth.createCustomToken(userRecord.uid);
     return { success: true, token: customToken };
 
   } catch (error: any) {
     if (error.code === 'auth/user-not-found') {
         return { success: false, error: "No user found with this email address." };
+    }
+    // Handle specific error from the flow if no image is registered
+    if (error.message.includes('No registered face image')) {
+        return { success: false, error: 'No face registration found for this user. Please register with your face first or use your password.' };
     }
     console.error("Face login error:", error);
     return { success: false, error: 'An unexpected error occurred during face login.' };
