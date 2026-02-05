@@ -14,6 +14,7 @@ import { useAuth } from '@/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
 import Link from 'next/link';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 export default function FaceLoginPage() {
   const { toast } = useToast();
@@ -139,21 +140,20 @@ export default function FaceLoginPage() {
           </div>
 
           <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
-            {hasCameraPermission === false && (
-               <Alert variant="destructive" className="m-4">
-                  <AlertTitle>Camera Access Denied</AlertTitle>
-                  <AlertDescription>
-                    Please enable camera permissions in your browser settings to use face login.
-                  </AlertDescription>
-              </Alert>
-            )}
-            {hasCameraPermission && !capturedImage && (
-              <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-            )}
+            <video ref={videoRef} className={cn("w-full h-full object-cover", (!hasCameraPermission || capturedImage) && "hidden")} autoPlay muted playsInline />
             {capturedImage && (
                 <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
             )}
-             <canvas ref={canvasRef} className="hidden" />
+
+            {hasCameraPermission === false && (
+                <Alert variant="destructive" className="m-4">
+                    <AlertTitle>Camera Access Denied</AlertTitle>
+                    <AlertDescription>
+                    Please enable camera permissions in your browser settings to use face login.
+                    </AlertDescription>
+              </Alert>
+            )}
+            <canvas ref={canvasRef} className="hidden" />
           </div>
 
           <div className="flex justify-center gap-4">

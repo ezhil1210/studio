@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Loader2, Camera } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function RegisterForm() {
   const { toast } = useToast();
@@ -189,20 +190,19 @@ export function RegisterForm() {
             ) : (
                 <div className="space-y-4">
                     <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
+                        <video ref={videoRef} className={cn("w-full h-full object-cover", !hasCameraPermission || capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
+                        {capturedImage && (
+                            <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
+                        )}
+
                         {hasCameraPermission === null && <p>Requesting camera permission...</p>}
                         {hasCameraPermission === false && (
-                             <Alert variant="destructive" className="m-4">
+                            <Alert variant="destructive" className="m-4">
                                 <AlertTitle>Camera Access Denied</AlertTitle>
                                 <AlertDescription>
                                     Please enable camera permissions in your browser settings to use this feature.
                                 </AlertDescription>
                             </Alert>
-                        )}
-                        {hasCameraPermission && !capturedImage && (
-                            <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                        )}
-                        {capturedImage && (
-                             <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
                         )}
                         <canvas ref={canvasRef} className="hidden" />
                     </div>
