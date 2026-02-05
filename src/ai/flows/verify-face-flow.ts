@@ -13,6 +13,16 @@ import {z} from 'genkit';
 import {getFirestore as getAdminFirestore} from 'firebase-admin/firestore';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import {initializeApp as initializeAdminApp, getApps as getAdminApps, App} from 'firebase-admin/app';
+import { 
+    VerifyFaceInput as VerifyFaceInputType, 
+    VerifyFaceInputSchema, 
+    VerifyFaceOutput as VerifyFaceOutputType, 
+    VerifyFaceOutputSchema 
+} from '@/lib/schemas';
+
+// Re-export types to keep the public API of this file consistent with its documentation
+export type VerifyFaceInput = VerifyFaceInputType;
+export type VerifyFaceOutput = VerifyFaceOutputType;
 
 // Ensure admin app is initialized
 function getFirebaseAdminApp(): App {
@@ -22,18 +32,6 @@ function getFirebaseAdminApp(): App {
     // This will use the GOOGLE_APPLICATION_CREDENTIALS environment variable
     return initializeAdminApp();
 }
-
-export const VerifyFaceInputSchema = z.object({
-  email: z.string().email().describe("The user's email address."),
-  capturedFaceImage: z.string().describe("A new photo of the user's face, as a data URI."),
-});
-export type VerifyFaceInput = z.infer<typeof VerifyFaceInputSchema>;
-
-export const VerifyFaceOutputSchema = z.object({
-  isMatch: z.boolean().describe('Whether the new face image matches the registered one.'),
-});
-export type VerifyFaceOutput = z.infer<typeof VerifyFaceOutputSchema>;
-
 
 const verifyFacePrompt = ai.definePrompt({
     name: 'verifyFacePrompt',
