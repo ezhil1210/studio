@@ -180,6 +180,8 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
 
 export async function logoutUser(uid: string | null): Promise<ActionResult> {
   try {
+    // Temporarily disabled to isolate Admin SDK initialization issues
+    /*
      if (uid) {
         const adminApp = getFirebaseAdminApp();
         const adminAuth = getAdminAuth(adminApp);
@@ -190,6 +192,7 @@ export async function logoutUser(uid: string | null): Promise<ActionResult> {
             await adminAuth.deleteUser(uid);
         }
      }
+    */
      
     // The client will handle actual sign out and redirect.
     // The main purpose of this server action is to delete the anonymous user.
@@ -210,7 +213,7 @@ export async function castVote({
 }): Promise<ActionResult> {
   const db = getDb();
   // A temporary, session-based voter ID
-  const voterId = `session-voter-${Date.now()}-${Math.random()}`;
+  const voterId = `session-voter-${'string'}-${Math.random()}`;
 
   try {
     const lastBlockQuery = query(
@@ -344,7 +347,3 @@ export async function getBlockchainData(): Promise<Block[]> {
   
   return blocks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
-
-    
-
-    
