@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Loader2, Camera, UserCheck } from 'lucide-react';
-import { loginWithFace } from '@/app/actions';
+import { Loader2, Camera, UserCheck, Lock } from 'lucide-react';
+import { loginUser } from '@/app/actions';
 import { useAuth } from '@/firebase';
 import { signInWithCustomToken } from 'firebase/auth';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ export default function FaceLoginPage() {
   const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   
   // Webcam state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -69,11 +70,11 @@ export default function FaceLoginPage() {
   };
 
   const handleLogin = async () => {
-    if (!email) {
+    if (!email || !password) {
       toast({
         variant: 'destructive',
-        title: 'Email Required',
-        description: 'Please enter your email address.',
+        title: 'Credentials Required',
+        description: 'Please enter your email and password.',
       });
       return;
     }
@@ -81,31 +82,32 @@ export default function FaceLoginPage() {
       toast({
         variant: 'destructive',
         title: 'Face Capture Required',
-        description: 'Please capture your photo to log in.',
+        description: 'Identity verification is mandatory for secure login.',
       });
       return;
     }
 
     setIsLoading(true);
 
-    // Normalize email
-    const trimmedEmail = email.trim().toLowerCase();
-
-    const result = await loginWithFace({ email: trimmedEmail, capturedImage });
+    const result = await loginUser({ 
+      email: email.trim().toLowerCase(), 
+      password: password,
+      faceImage: capturedImage 
+    });
 
     if (result.success && result.token && auth) {
       try {
         await signInWithCustomToken(auth, result.token);
         toast({
-          title: 'Login Successful',
-          description: 'Welcome back!',
+          title: 'Secure Login Successful',
+          description: 'Identity verified with Password and Face.',
         });
         router.push('/vote');
       } catch (authError) {
         toast({
           variant: 'destructive',
-          title: 'Login Failed',
-          description: 'Could not complete sign in. Please try again.',
+          title: 'Session Error',
+          description: 'Could not establish secure session. Please try again.',
         });
         setIsLoading(false);
       }
@@ -113,7 +115,7 @@ export default function FaceLoginPage() {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: result.error || 'An unexpected error occurred.',
+        description: result.error || 'Invalid credentials or face verification failed.',
       });
       setIsLoading(false);
     }
@@ -126,58 +128,82 @@ export default function FaceLoginPage() {
       </div>
       <Card className="w-full max-w-md border-0 shadow-2xl shadow-primary/10 bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Login with Face</CardTitle>
-          <CardDescription>Enter your email and capture your face to sign in.</CardDescription>
+          <CardTitle className="text-2xl font-bold">Secure Face Login</CardTitle>
+          <CardDescription>Multi-factor authentication (Password + Face) required.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-            />
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
           </div>
 
-          <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
-            <video ref={videoRef} className={cn("w-full h-full object-cover", capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
-            {capturedImage && (
-                <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
-            )}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Camera className="h-4 w-4" /> Identity Verification
+              </Label>
+            </div>
+            <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
+              <video ref={videoRef} className={cn("w-full h-full object-cover", capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
+              {capturedImage && (
+                  <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
+              )}
 
-            {hasCameraPermission === false && (
-                <Alert variant="destructive" className="m-4">
-                    <AlertTitle>Camera Access Denied</AlertTitle>
-                    <AlertDescription>
-                    Please enable camera permissions in your browser settings to use face login.
-                    </AlertDescription>
-              </Alert>
-            )}
-            <canvas ref={canvasRef} className="hidden" />
-          </div>
+              {hasCameraPermission === false && (
+                  <div className="p-4 text-center">
+                      <Alert variant="destructive">
+                        <AlertTitle>Camera Access Required</AlertTitle>
+                        <AlertDescription>
+                          Identity verification is mandatory. Please enable camera access.
+                        </AlertDescription>
+                      </Alert>
+                  </div>
+              )}
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
 
-          <div className="flex justify-center gap-4">
-            {hasCameraPermission && !capturedImage && (
-              <Button type="button" onClick={handleCapture} disabled={isLoading}>
-                <Camera className="mr-2" /> Capture
-              </Button>
-            )}
-            {hasCameraPermission && capturedImage && (
-              <Button type="button" variant="outline" onClick={handleRetake} disabled={isLoading}>Retake Photo</Button>
-            )}
+            <div className="flex justify-center gap-4">
+              {hasCameraPermission && !capturedImage && (
+                <Button type="button" onClick={handleCapture} disabled={isLoading} size="sm" variant="secondary">
+                  <Camera className="mr-2 h-4 w-4" /> Capture to Verify
+                </Button>
+              )}
+              {hasCameraPermission && capturedImage && (
+                <Button type="button" variant="outline" onClick={handleRetake} disabled={isLoading} size="sm">
+                  Retake Photo
+                </Button>
+              )}
+            </div>
           </div>
           
-          <Button onClick={handleLogin} disabled={isLoading || !capturedImage || !email}>
-            {isLoading ? <Loader2 className="animate-spin" /> : <><UserCheck className="mr-2" />Login with Face</>}
+          <Button onClick={handleLogin} disabled={isLoading || !capturedImage || !email || !password}>
+            {isLoading ? <Loader2 className="animate-spin" /> : <><UserCheck className="mr-2" />Secure Login</>}
           </Button>
           
           <div className="mt-2 text-center text-sm">
-            Prefer your password?{" "}
+            Back to standard{" "}
             <Link href="/login" className="font-semibold text-primary hover:underline">
-              Login with Password
+              Login Portal
             </Link>
           </div>
         </CardContent>
