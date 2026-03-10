@@ -1,107 +1,68 @@
 
 import { initializeApp } from 'firebase-admin/app';
-import { getFirestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
-import { createHash } from 'crypto';
+import { getFirestore } from 'firebase-admin/firestore';
 import 'dotenv/config';
 
 // Initialize Firebase Admin SDK
-// You must have the GOOGLE_APPLICATION_CREDENTIALS environment variable set.
 initializeApp({
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'studio-7207673344-fd1a1',
 });
 
-
 const db = getFirestore();
-const candidates = ["Candidate Alpha", "Candidate Bravo", "Candidate Charlie"];
 
-// Helper function to sleep for a given time
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+/**
+ * Recursively deletes a collection and all its subcollections.
+ */
+async function deleteCollection(collectionPath: string, batchSize: number = 100) {
+    const collectionRef = db.collection(collectionPath);
+    const query = collectionRef.orderBy('__name__').limit(batchSize);
 
-async function castSingleVote(previousBlockHash: string, lastTimestamp: number, voterIndex: number): Promise<{ newHash: string, newTimestamp: number }> {
+    return new Promise((resolve, reject) => {
+        deleteQueryBatch(query, resolve).catch(reject);
+    });
+}
+
+async function deleteQueryBatch(query: any, resolve: any) {
+    const snapshot = await query.get();
+
+    const batchSize = snapshot.size;
+    if (batchSize === 0) {
+        // When there are no documents left, we are done
+        resolve();
+        return;
+    }
+
+    // Delete documents in a batch
     const batch = db.batch();
-    
-    const blockId = db.collection('blocks').doc().id;
-    const voterId = `sim-voter-${voterIndex}`;
-    const candidate = candidates[Math.floor(Math.random() * candidates.length)];
-    
-    const currentTimestampMs = lastTimestamp + (Math.random() * 2000 + 500); // Add 0.5 to 2.5 seconds
-    const currentTimestamp = new Date(currentTimestampMs).toISOString();
+    snapshot.docs.forEach((doc: any) => {
+        batch.delete(doc.ref);
+    });
 
-    const voteId = db.collection('blocks').doc(blockId).collection('votes').doc().id;
-    const newVote = {
-        id: voteId,
-        voterId: voterId,
-        encryptedVoteData: candidate,
-        timestamp: currentTimestamp,
-        blockId: blockId,
-    };
-
-    const newBlockData = {
-        id: blockId,
-        timestamp: newVote.timestamp,
-        previousBlockHash: previousBlockHash,
-        voteIds: [newVote.id],
-        voterIds: [voterId],
-        hash: "",
-    };
-
-    const blockContentForHashing = {
-        id: newBlockData.id,
-        timestamp: newBlockData.timestamp,
-        previousBlockHash: newBlockData.previousBlockHash,
-        voteIds: newBlockData.voteIds,
-        voterIds: newBlockData.voterIds,
-    };
-    
-    const hash = createHash("sha256").update(JSON.stringify(blockContentForHashing)).digest("hex");
-    newBlockData.hash = hash;
-
-    // Add block and vote to the batch
-    const newBlockRef = db.collection("blocks").doc(newBlockData.id);
-    batch.set(newBlockRef, newBlockData);
-    const newVoteRef = db.doc(`blocks/${newBlockData.id}/votes/${newVote.id}`);
-    batch.set(newVoteRef, newVote);
-    
     await batch.commit();
-    console.log(`Vote cast for ${candidate} by ${voterId}`);
 
-    return { newHash: hash, newTimestamp: currentTimestampMs };
+    // Recurse on the next process tick, to avoid exploding the stack.
+    process.nextTick(() => {
+        deleteQueryBatch(query, resolve);
+    });
 }
 
-
-async function startLiveSeeding() {
-    console.log("Starting live vote simulation...");
-    let previousBlockHash = "0".repeat(64);
-    let lastTimestamp = Date.now();
-    let voterIndex = 0;
-
-    // Fetch the last block to continue the chain
-    const lastBlockQuery = await db.collection("blocks").orderBy("timestamp", "desc").limit(1).get();
-    if (!lastBlockQuery.empty) {
-        const lastBlock = lastBlockQuery.docs[0].data();
-        previousBlockHash = lastBlock.hash;
-        lastTimestamp = new Date(lastBlock.timestamp).getTime();
-        console.log("Resuming chain from last known block.");
-    } else {
-        console.log("No existing blocks found. Starting new chain (Genesis).");
-    }
-
-    // Run indefinitely
-    while (true) {
-        try {
-            const { newHash, newTimestamp } = await castSingleVote(previousBlockHash, lastTimestamp, voterIndex);
-            previousBlockHash = newHash;
-            lastTimestamp = newTimestamp;
-            voterIndex++;
-            await sleep(2000); // Wait 2 seconds before casting the next vote
-        } catch (error) {
-            console.error("Error during live seeding:", error);
-            await sleep(5000); // Wait longer if there's an error
-        }
+async function flushDatabase() {
+    console.log("Starting full database flush...");
+    
+    try {
+        console.log("Deleting 'blocks' collection...");
+        await deleteCollection('blocks');
+        
+        console.log("Deleting 'voters' collection...");
+        await deleteCollection('voters');
+        
+        console.log("Database flush complete. All records have been cleared.");
+    } catch (error) {
+        console.error("Error during database flush:", error);
+        process.exit(1);
     }
 }
 
-startLiveSeeding().catch(e => {
-    console.error("Failed to start live seeding:", e);
-    process.exit(1);
+flushDatabase().then(() => {
+    process.exit(0);
 });
