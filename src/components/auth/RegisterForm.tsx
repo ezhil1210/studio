@@ -19,7 +19,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { registerUser } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Loader2, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -92,7 +92,13 @@ export function RegisterForm() {
 
   async function onSubmit(values: RegisterSchema) {
     setIsSubmitting(true);
-    const result = await registerUser(values);
+    // Normalize input
+    const normalizedValues = {
+      ...values,
+      email: values.email.trim().toLowerCase(),
+    };
+    
+    const result = await registerUser(normalizedValues);
     
     if (result.success) {
       toast({
@@ -184,7 +190,7 @@ export function RegisterForm() {
         <div className="space-y-4">
             <h3 className="text-lg font-medium">Face Registration (Optional)</h3>
             {!isCameraEnabled ? (
-                 <Button variant="outline" onClick={handleEnableCamera} className="w-full">
+                 <Button type="button" variant="outline" onClick={handleEnableCamera} className="w-full">
                     <Camera className="mr-2" /> Enable Camera for Face Login
                 </Button>
             ) : (

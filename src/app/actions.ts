@@ -49,23 +49,25 @@ function getFirebaseAuth() {
   return getAuth(getFirebaseApp());
 }
 
-// Securely initialize Firebase Admin
+// Securely initialize Firebase Admin dynamically to avoid bundling issues
 async function getAdminServices() {
-    const adminAppModule = await import('firebase-admin/app');
-    const adminAuthModule = await import('firebase-admin/auth');
-    const adminFirestoreModule = await import('firebase-admin/firestore');
+    const { initializeApp: initializeAdminApp, getApps: getAdminApps } = await import('firebase-admin/app');
+    const { getAuth: getAdminAuth } = await import('firebase-admin/auth');
+    const { getFirestore: getAdminFirestore } = await import('firebase-admin/firestore');
 
-    const initializeAdminApp = adminAppModule.initializeApp;
-    const getAdminApps = adminAppModule.getApps;
-    const getAdminAuth = adminAuthModule.getAuth;
-    const getAdminFirestore = adminFirestoreModule.getFirestore;
-
-    let adminApp;
     const apps = getAdminApps();
+    let adminApp;
+    
     if (apps.length === 0) {
-        adminApp = initializeAdminApp({
-            projectId: firebaseConfig.projectId,
-        });
+        // Attempt the most automatic initialization for cloud environments
+        try {
+            adminApp = initializeAdminApp();
+        } catch (e) {
+            // Fallback to project ID if automatic fails
+            adminApp = initializeAdminApp({
+                projectId: firebaseConfig.projectId,
+            });
+        }
     } else {
         adminApp = apps[0];
     }
@@ -89,7 +91,7 @@ export async function demoLogin(): Promise<ActionResult> {
 }
 
 export async function registerUser(values: RegisterSchema): Promise<ActionResult> {
-  const email = values.email.trim();
+  const email = values.email.trim().toLowerCase();
   try {
     const auth = getFirebaseAuth();
     const userCredential = await createUserWithEmailAndPassword(
@@ -129,7 +131,7 @@ export async function loginUser({ email, password }: { email?: string; password?
   if (!email || !password) {
     return { success: false, error: "Email and password are required." };
   }
-  const trimmedEmail = email.trim();
+  const trimmedEmail = email.trim().toLowerCase();
   try {
     const auth = getFirebaseAuth();
     const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
@@ -141,30 +143,31 @@ export async function loginUser({ email, password }: { email?: string; password?
 
 export async function loginWithFace({ email, capturedImage }: { email: string; capturedImage: string; }): Promise<{success: boolean; token?: string; error?: string;}> {
   if (!email) return { success: false, error: "Email is required." };
-  const trimmedEmail = email.trim();
+  const trimmedEmail = email.trim().toLowerCase();
   
   try {
-    const { adminAuth, adminDb } = await getAdminServices();
-    const { verifyFace } = await import('@/ai/flows/verify-face-flow');
+    // 1. Get registered face image from Firestore using CLIENT SDK
+    // This bypasses Admin SDK auth issues for the initial data lookup
+    const db = getDb();
+    const votersQuery = query(collection(db, 'voters'), where('email', '==', trimmedEmail));
+    const votersSnapshot = await getDocs(votersQuery);
 
-    // 1. Get User by Email
-    let userRecord;
-    try {
-        userRecord = await adminAuth.getUserByEmail(trimmedEmail);
-    } catch (e: any) {
-        return { success: false, error: `Authentication lookup failed: ${e.code === 'auth/user-not-found' ? "No user found with this email." : (e.message || "Unknown lookup error")}` };
+    if (votersSnapshot.empty) {
+        return { success: false, error: 'No registered user found with this email address.' };
     }
-
-    // 2. Get registered face image from Firestore
-    const voterDoc = await adminDb.collection('voters').doc(userRecord.uid).get();
+    
+    const voterDoc = votersSnapshot.docs[0];
     const voterData = voterDoc.data();
+    const uid = voterDoc.id;
 
-    if (!voterDoc.exists || !voterData?.faceImage) {
-        return { success: false, error: 'No face registration found. Please login with your password or re-register with a photo.' };
+    if (!voterData?.faceImage) {
+        return { success: false, error: 'No face registration found for this account. Please login with your password.' };
     }
+    
     const registeredImage = voterData.faceImage;
 
-    // 3. AI Comparison
+    // 2. Perform AI Comparison
+    const { verifyFace } = await import('@/ai/flows/verify-face-flow');
     const verificationResult = await verifyFace({
       registeredImage: registeredImage,
       capturedFaceImage: capturedImage,
@@ -174,33 +177,39 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
         return { success: false, error: 'Identity verification failed. The captured photo does not match our records.' };
     }
 
-    // 4. Create custom token for secure sign-in
-    const customToken = await adminAuth.createCustomToken(userRecord.uid);
-    return { success: true, token: customToken };
+    // 3. Create custom token for secure sign-in (Requires Admin SDK)
+    try {
+        const { adminAuth } = await getAdminServices();
+        const customToken = await adminAuth.createCustomToken(uid);
+        return { success: true, token: customToken };
+    } catch (adminError: any) {
+        console.error("Admin SDK Token Error:", adminError);
+        return { success: false, error: 'The verification matched, but the secure login service is currently unavailable. Please use your password.' };
+    }
 
   } catch (error: any) {
     console.error("Face login internal error:", error);
-    return { success: false, error: `Face login failed: ${error.message || 'An unexpected error occurred.'}` };
+    return { success: false, error: `Login failed: ${error.message || 'An unexpected error occurred.'}` };
   }
 }
 
 export async function logoutUser(uid: string | null): Promise<ActionResult> {
   try {
      if (uid) {
-        const { adminAuth } = await getAdminServices();
+        // Optional server-side cleanup for anonymous users
         try {
+            const { adminAuth } = await getAdminServices();
             const userRecord = await adminAuth.getUser(uid);
-            // If it's an anonymous user, we could delete them here if we wanted to cleanup
             if (userRecord.providerData.length === 0) {
                 await adminAuth.deleteUser(uid);
             }
         } catch (e) {
-            // User might already be deleted or not found
+            // User might already be deleted or not found, which is fine for logout
         }
      }
     return { success: true };
   } catch (error: any) {
-    return { success: true }; // Proceed with logout regardless
+    return { success: true }; // Proceed with client logout regardless
   }
 }
 

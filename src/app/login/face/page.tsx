@@ -88,7 +88,10 @@ export default function FaceLoginPage() {
 
     setIsLoading(true);
 
-    const result = await loginWithFace({ email, capturedImage });
+    // Normalize email
+    const trimmedEmail = email.trim().toLowerCase();
+
+    const result = await loginWithFace({ email: trimmedEmail, capturedImage });
 
     if (result.success && result.token && auth) {
       try {
@@ -158,12 +161,12 @@ export default function FaceLoginPage() {
 
           <div className="flex justify-center gap-4">
             {hasCameraPermission && !capturedImage && (
-              <Button onClick={handleCapture} disabled={isLoading}>
+              <Button type="button" onClick={handleCapture} disabled={isLoading}>
                 <Camera className="mr-2" /> Capture
               </Button>
             )}
             {hasCameraPermission && capturedImage && (
-              <Button variant="outline" onClick={handleRetake} disabled={isLoading}>Retake Photo</Button>
+              <Button type="button" variant="outline" onClick={handleRetake} disabled={isLoading}>Retake Photo</Button>
             )}
           </div>
           

@@ -35,7 +35,13 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginSchema) {
     setIsSubmitting(true);
-    const result = await loginUser(values);
+    // Normalize input
+    const normalizedValues = {
+      ...values,
+      email: values.email.trim().toLowerCase(),
+    };
+    
+    const result = await loginUser(normalizedValues);
 
     if (result.success) {
       toast({
