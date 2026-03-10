@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,13 +9,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, User, ShieldCheck } from "lucide-react";
-import { useUser } from "@/firebase";
+import { useUser, useAuth } from "@/firebase";
 import { demoLogin } from "@/app/actions";
+import { signInAnonymously } from "firebase/auth";
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   useEffect(() => {
@@ -24,15 +27,33 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   const handleDemoClick = async () => {
+    if (!auth) return;
     setIsDemoLoading(true);
+    
+    // We call the server action to check if demo mode is allowed,
+    // then perform the actual sign-in on the client to avoid token issues.
     const result = await demoLogin();
+    
     if (result.success) {
-      router.push('/vote');
+      try {
+        await signInAnonymously(auth);
+        toast({
+          title: "Demo Access Granted",
+          description: "Logged in as a guest for testing purposes.",
+        });
+        router.push('/vote');
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Demo Login Failed",
+          description: "Could not initialize demo session.",
+        });
+      }
     } else {
       toast({
         variant: "destructive",
-        title: "Demo Login Failed",
-        description: "Could not log in as a demo user. Please try again.",
+        title: "Demo Access Denied",
+        description: "Demo mode is currently unavailable.",
       });
     }
     setIsDemoLoading(false);

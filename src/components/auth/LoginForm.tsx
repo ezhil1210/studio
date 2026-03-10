@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -13,21 +14,22 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { loginUser } from "@/app/actions";
+import { verifyVoterBiometrics } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { Loader2, Camera, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Loader2, Camera, CheckCircle2, ShieldAlert, LockKeyhole } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/firebase";
-import { signInWithCustomToken } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 export function LoginForm() {
   const { toast } = useToast();
   const router = useRouter();
-  const firebaseAuth = useAuth();
+  const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authStage, setAuthStage] = useState<'idle' | 'password' | 'biometric'>('idle');
 
   // Webcam state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -87,33 +89,44 @@ export function LoginForm() {
   };
 
   async function onSubmit(values: LoginSchema) {
+    if (!auth) return;
     setIsSubmitting(true);
     
-    const result = await loginUser(values);
+    try {
+      // Stage 1: Password Authentication (Client-side)
+      setAuthStage('password');
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
 
-    if (result.success && result.token && firebaseAuth) {
-      try {
-        await signInWithCustomToken(firebaseAuth, result.token);
+      // Stage 2: Biometric Verification (Server-side)
+      setAuthStage('biometric');
+      const bioResult = await verifyVoterBiometrics(user.uid, values.faceImage);
+
+      if (bioResult.success && bioResult.isMatch) {
         toast({
-          title: "Multi-Factor Authentication Success",
-          description: "Password and Face Verification confirmed.",
+          title: "Access Granted",
+          description: "Password and Face Identity verified.",
         });
         router.push('/vote');
-      } catch (authError) {
+      } else {
+        // Biometric failure: Force sign out immediately to maintain mandatory MFA
+        await signOut(auth);
         toast({
           variant: "destructive",
-          title: "Session Error",
-          description: "Could not establish secure session. Please try again.",
+          title: "Identity Check Failed",
+          description: bioResult.error || "The captured photo does not match our records.",
         });
         setIsSubmitting(false);
+        setAuthStage('idle');
       }
-    } else {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: result.error || "Invalid credentials or face match failed.",
+        description: error.message || "Invalid credentials. Please try again.",
       });
       setIsSubmitting(false);
+      setAuthStage('idle');
     }
   }
 
@@ -127,7 +140,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} />
+                <Input placeholder="name@example.com" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -140,7 +153,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -152,7 +165,7 @@ export function LoginForm() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <FormLabel className="text-sm font-medium flex items-center gap-2">
-                    <Camera className="h-4 w-4" /> Required Identity Verification
+                    <Camera className="h-4 w-4" /> Mandatory Biometric Identity
                 </FormLabel>
                 {capturedImage && <CheckCircle2 className="h-4 w-4 text-green-500" />}
             </div>
@@ -166,7 +179,7 @@ export function LoginForm() {
                 {hasCameraPermission === false && (
                     <div className="p-4 text-center">
                         <ShieldAlert className="h-8 w-8 mx-auto text-destructive mb-2" />
-                        <p className="text-xs text-destructive">Camera access required for login.</p>
+                        <p className="text-xs text-destructive">Webcam access required for voting.</p>
                     </div>
                 )}
                 <canvas ref={canvasRef} className="hidden" />
@@ -189,7 +202,17 @@ export function LoginForm() {
         </div>
 
         <Button type="submit" className="w-full mt-2" disabled={isSubmitting || !capturedImage}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Secure Login"}
+          {isSubmitting ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="animate-spin h-4 w-4" />
+              <span>{authStage === 'password' ? 'Checking Password...' : 'Verifying Identity...'}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <LockKeyhole className="h-4 w-4" />
+              <span>Secure Login</span>
+            </div>
+          )}
         </Button>
       </form>
     </Form>

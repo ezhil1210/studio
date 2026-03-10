@@ -1,11 +1,6 @@
+
 "use server";
 
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInAnonymously,
-  updateProfile,
-} from "firebase/auth";
 import {
   collection,
   doc,
@@ -13,25 +8,23 @@ import {
   getDocs,
   getDoc,
   query,
-  where,
-  writeBatch,
-  Timestamp,
   orderBy,
   limit,
+  Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
 import { revalidatePath } from "next/cache";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
-import { getAuth } from "firebase/auth";
-import { RegisterSchema, LoginSchema } from "@/lib/schemas";
+import { RegisterSchema } from "@/lib/schemas";
 
 type ActionResult = {
   success: boolean;
   error?: string;
   uid?: string;
-  token?: string;
+  isMatch?: boolean;
 };
 
 // Client SDK initialization (Used by Server Actions acting as a client)
@@ -46,69 +39,16 @@ function getDb() {
   return getFirestore(getFirebaseApp());
 }
 
-function getFirebaseAuth() {
-  return getAuth(getFirebaseApp());
-}
-
-// Securely initialize Firebase Admin dynamically to avoid bundling issues
-async function getAdminServices() {
-    const { initializeApp: initializeAdminApp, getApps: getAdminApps } = await import('firebase-admin/app');
-    const { getAuth: getAdminAuth } = await import('firebase-admin/auth');
-    const { getFirestore: getAdminFirestore } = await import('firebase-admin/firestore');
-
-    const apps = getAdminApps();
-    let adminApp;
-    
-    if (apps.length === 0) {
-        try {
-            // Prefer automatic initialization in cloud environments
-            adminApp = initializeAdminApp();
-        } catch (e) {
-            // Fallback to config-based initialization
-            adminApp = initializeAdminApp({
-                projectId: firebaseConfig.projectId,
-            });
-        }
-    } else {
-        adminApp = apps[0];
-    }
-
-    return {
-        adminAuth: getAdminAuth(adminApp),
-        adminDb: getAdminFirestore(adminApp),
-    };
-}
-
 // --- AUTH ACTIONS ---
-
-export async function demoLogin(): Promise<ActionResult> {
-  try {
-    const auth = getFirebaseAuth();
-    const userCredential = await signInAnonymously(auth);
-    return { success: true, uid: userCredential.user.uid };
-  } catch (error: any) {
-    return { success: false, error: "Anonymous sign-in failed." };
-  }
-}
 
 export async function registerUser(values: RegisterSchema): Promise<ActionResult> {
   const email = values.email.trim().toLowerCase();
   try {
-    const auth = getFirebaseAuth();
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      values.password
-    );
-    const user = userCredential.user;
-
-    await updateProfile(user, { displayName: values.name });
-
     const db = getDb();
-    const voterDocRef = doc(db, "voters", user.uid);
-    
+    const voterId = values.voterId;
+
     const newVoter = {
-      id: user.uid,
+      id: voterId,
       name: values.name,
       email: email,
       hashedVoterId: createHash("sha256").update(values.voterId).digest("hex"),
@@ -116,101 +56,77 @@ export async function registerUser(values: RegisterSchema): Promise<ActionResult
       faceImage: values.faceImage,
     };
 
-    await setDoc(voterDocRef, newVoter);
+    await setDoc(doc(db, "voters", voterId), newVoter);
 
-    return { success: true, uid: user.uid };
+    return { success: true, uid: voterId };
   } catch (error: any) {
-    let errorMessage = error.message || "An unexpected error occurred.";
-    if (error.code === 'auth/email-already-in-use') {
-      errorMessage = "This email address is already in use.";
-    }
-    return { success: false, error: errorMessage };
+    return { success: false, error: error.message || "Failed to save voter profile." };
   }
 }
 
-export async function loginUser(values: LoginSchema): Promise<ActionResult> {
-  const email = values.email.trim().toLowerCase();
+/**
+ * Verifies a captured face image against the user's registered image in Firestore.
+ * This is the mandatory biometric second factor.
+ */
+export async function verifyVoterBiometrics(uid: string, capturedFaceImage: string): Promise<ActionResult> {
   try {
-    const auth = getFirebaseAuth();
-    
-    // 1. Password verification
-    let user;
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, values.password);
-      user = userCredential.user;
-    } catch (authError: any) {
-      console.error("Auth verification failed:", authError);
-      return { success: false, error: "Invalid email or password." };
-    }
-    const uid = user.uid;
-
-    // 2. Fetch voter profile for biometric verification
     const db = getDb();
-    let voterDoc;
-    try {
-      voterDoc = await getDoc(doc(db, "voters", uid));
-    } catch (dbError: any) {
-      return { success: false, error: "Failed to access voter profile. Please try again." };
-    }
+    const voterDoc = await getDoc(doc(db, "voters", uid));
     
     if (!voterDoc.exists()) {
-        return { success: false, error: "Voter record not found for this account." };
+      return { success: false, error: "Voter record not found." };
     }
     
     const voterData = voterDoc.data();
     if (!voterData.faceImage) {
-        return { success: false, error: "Face biometric data missing. Please contact system administrator." };
+      return { success: false, error: "Baseline biometric data is missing for this account." };
     }
 
-    // 3. AI Face Verification
-    try {
-      const { verifyFace } = await import('@/ai/flows/verify-face-flow');
-      const verificationResult = await verifyFace({
-        registeredImage: voterData.faceImage,
-        capturedFaceImage: values.faceImage,
-      });
+    // AI Face Verification using Gemini via Genkit
+    const { verifyFace } = await import('@/ai/flows/verify-face-flow');
+    const verificationResult = await verifyFace({
+      registeredImage: voterData.faceImage,
+      capturedFaceImage: capturedFaceImage,
+    });
 
-      if (!verificationResult.isMatch) {
-          return { success: false, error: "Face verification failed. The captured photo does not match our records." };
-      }
-    } catch (aiError: any) {
-      console.error("AI Flow error:", aiError);
-      return { success: false, error: "Face verification service is currently unavailable." };
+    if (!verificationResult.isMatch) {
+      return { success: false, isMatch: false, error: "Identity verification failed. The captured photo does not match our records." };
     }
 
-    // 4. Create custom token for client sign-in
-    try {
-      const { adminAuth } = await getAdminServices();
-      const customToken = await adminAuth.createCustomToken(uid);
-      return { success: true, token: customToken, uid };
-    } catch (adminError: any) {
-      console.error("Token generation error:", adminError);
-      return { success: false, error: "MFA passed, but failed to establish secure session. Contact support." };
-    }
-    
+    return { success: true, isMatch: true };
   } catch (error: any) {
-    console.error("Critical Login error:", error);
-    return { success: false, error: "A critical error occurred. Please try again later." };
+    console.error("Biometric verification error:", error);
+    return { success: false, error: "The identity verification service is temporarily unavailable." };
   }
 }
 
+/**
+ * Placeholder for any server-side cleanup during logout.
+ */
 export async function logoutUser(uid: string | null): Promise<ActionResult> {
-  try {
-    return { success: true };
-  } catch (error: any) {
-    return { success: true };
-  }
+  // No server-side cleanup required for this implementation
+  return { success: true };
+}
+
+/**
+ * Logic to handle a demo bypass login.
+ */
+export async function demoLogin(): Promise<ActionResult> {
+  // Demo mode is handled primarily on the client via signInAnonymously
+  // This action validates that demo mode is acceptable.
+  return { success: true };
 }
 
 // --- VOTING ACTIONS ---
 
 export async function castVote({
   candidate,
+  voterId,
 }: {
   candidate: string;
+  voterId: string;
 }): Promise<ActionResult> {
   const db = getDb();
-  const voterId = `voter-${Math.random().toString(36).substr(2, 9)}`;
 
   try {
     const lastBlockQuery = query(

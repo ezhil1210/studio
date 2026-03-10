@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Loader2, Camera, UserCheck, Lock } from 'lucide-react';
-import { loginUser } from '@/app/actions';
+import { Loader2, Camera, UserCheck, Lock, CheckCircle2 } from 'lucide-react';
+import { verifyVoterBiometrics } from '@/app/actions';
 import { useAuth } from '@/firebase';
-import { signInWithCustomToken } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import Link from 'next/link';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ export default function FaceLoginPage() {
   const router = useRouter();
   const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [authStage, setAuthStage] = useState<'idle' | 'password' | 'biometric'>('idle');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
@@ -87,37 +88,45 @@ export default function FaceLoginPage() {
       return;
     }
 
+    if (!auth) return;
+
     setIsLoading(true);
 
-    const result = await loginUser({ 
-      email: email.trim().toLowerCase(), 
-      password: password,
-      faceImage: capturedImage 
-    });
+    try {
+      // Stage 1: Password Authentication
+      setAuthStage('password');
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      const user = userCredential.user;
 
-    if (result.success && result.token && auth) {
-      try {
-        await signInWithCustomToken(auth, result.token);
+      // Stage 2: Biometric Verification
+      setAuthStage('biometric');
+      const bioResult = await verifyVoterBiometrics(user.uid, capturedImage);
+
+      if (bioResult.success && bioResult.isMatch) {
         toast({
           title: 'Secure Login Successful',
           description: 'Identity verified with Password and Face.',
         });
         router.push('/vote');
-      } catch (authError) {
+      } else {
+        // Biometric failure: Force sign out immediately
+        await signOut(auth);
         toast({
           variant: 'destructive',
-          title: 'Session Error',
-          description: 'Could not establish secure session. Please try again.',
+          title: 'Identity Check Failed',
+          description: bioResult.error || 'The captured photo does not match our records.',
         });
         setIsLoading(false);
+        setAuthStage('idle');
       }
-    } else {
+    } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: result.error || 'Invalid credentials or face verification failed.',
+        description: error.message || 'Invalid credentials. Please try again.',
       });
       setIsLoading(false);
+      setAuthStage('idle');
     }
   };
 
@@ -160,11 +169,12 @@ export default function FaceLoginPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium flex items-center gap-2">
-                <Camera className="h-4 w-4" /> Identity Verification
+                <Camera className="h-4 w-4" /> Mandatory Biometric Identity
               </Label>
+              {capturedImage && <CheckCircle2 className="h-4 w-4 text-green-500" />}
             </div>
             <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
-              <video ref={videoRef} className={cn("w-full h-full object-cover", capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
+              <video ref={videoRef} className={cn("w-full h-full object-cover", !hasCameraPermission || capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
               {capturedImage && (
                   <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
               )}
@@ -174,7 +184,7 @@ export default function FaceLoginPage() {
                       <Alert variant="destructive">
                         <AlertTitle>Camera Access Required</AlertTitle>
                         <AlertDescription>
-                          Identity verification is mandatory. Please enable camera access.
+                          Biometric verification is mandatory for voting security.
                         </AlertDescription>
                       </Alert>
                   </div>
@@ -183,12 +193,11 @@ export default function FaceLoginPage() {
             </div>
 
             <div className="flex justify-center gap-4">
-              {hasCameraPermission && !capturedImage && (
-                <Button type="button" onClick={handleCapture} disabled={isLoading} size="sm" variant="secondary">
-                  <Camera className="mr-2 h-4 w-4" /> Capture to Verify
+              {!capturedImage ? (
+                <Button type="button" onClick={handleCapture} disabled={isLoading || !hasCameraPermission} size="sm" variant="secondary">
+                  <Camera className="mr-2 h-4 w-4" /> Capture to Verify Identity
                 </Button>
-              )}
-              {hasCameraPermission && capturedImage && (
+              ) : (
                 <Button type="button" variant="outline" onClick={handleRetake} disabled={isLoading} size="sm">
                   Retake Photo
                 </Button>
@@ -197,7 +206,17 @@ export default function FaceLoginPage() {
           </div>
           
           <Button onClick={handleLogin} disabled={isLoading || !capturedImage || !email || !password}>
-            {isLoading ? <Loader2 className="animate-spin" /> : <><UserCheck className="mr-2" />Secure Login</>}
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="animate-spin h-4 w-4" />
+                <span>{authStage === 'password' ? 'Checking Password...' : 'Verifying Identity...'}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <UserCheck className="h-4 w-4" />
+                <span>Secure Login</span>
+              </div>
+            )}
           </Button>
           
           <div className="mt-2 text-center text-sm">

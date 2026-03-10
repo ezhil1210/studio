@@ -9,7 +9,7 @@ import { castVote } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, CheckCircle, Star, Heart, Triangle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useUser } from "@/firebase";
 
 const candidates = [
   { name: "Candidate Alpha", icon: <Star className="h-16 w-16 text-yellow-400" /> },
@@ -20,9 +20,9 @@ const candidates = [
 export function VoteClient() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasVoted, setHasVoted] = useState(false); // Local boolean to track vote
+  const [hasVoted, setHasVoted] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
+  const { user } = useUser();
   
   const handleVote = async () => {
     if (!selectedCandidate) {
@@ -33,16 +33,28 @@ export function VoteClient() {
       });
       return;
     }
+
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Session Expired",
+        description: "Please log in again to cast your vote.",
+      });
+      return;
+    }
     
     setIsSubmitting(true);
-    const result = await castVote({ candidate: selectedCandidate });
+    const result = await castVote({ 
+      candidate: selectedCandidate,
+      voterId: user.uid
+    });
 
     if (result.success) {
       toast({
         title: "Vote Cast Successfully",
-        description: "Your vote has been securely recorded.",
+        description: "Your vote has been securely recorded on the blockchain.",
       });
-      setHasVoted(true); // Set local boolean to true
+      setHasVoted(true);
     } else {
       toast({
         variant: "destructive",
@@ -65,7 +77,7 @@ export function VoteClient() {
           </CardHeader>
           <CardContent>
             <CardDescription className="text-base text-muted-foreground">
-              Your vote has been securely recorded on the blockchain.
+              Your vote has been securely recorded and chained to the immutable ledger.
             </CardDescription>
             <div className="mt-6 flex gap-4 justify-center">
               <Button asChild>
@@ -84,8 +96,8 @@ export function VoteClient() {
   return (
     <div className="p-4 md:p-8 w-full">
       <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold">Cast Your Vote</h1>
-        <p className="text-muted-foreground mt-2">Select your preferred candidate and submit your vote.</p>
+        <h1 className="text-3xl md:text-4xl font-bold">Cast Your Secure Vote</h1>
+        <p className="text-muted-foreground mt-2">Select your preferred candidate and submit your vote to the blockchain.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
@@ -127,13 +139,13 @@ export function VoteClient() {
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Casting Vote...
+              Chaining Vote...
             </>
           ) : (
-            "Cast Your Vote"
+            "Cast Your Secure Vote"
           )}
         </Button>
-        <p className="text-sm text-muted-foreground mt-4">Your vote is final and cannot be changed.</p>
+        <p className="text-sm text-muted-foreground mt-4">Every vote is final and immutably recorded.</p>
       </div>
     </div>
   );

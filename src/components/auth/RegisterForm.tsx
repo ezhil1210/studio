@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -21,10 +22,13 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Loader2, Camera, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/firebase";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
 export function RegisterForm() {
   const { toast } = useToast();
   const router = useRouter();
+  const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Webcam state
@@ -88,23 +92,46 @@ export function RegisterForm() {
   };
 
   async function onSubmit(values: RegisterSchema) {
+    if (!auth) return;
     setIsSubmitting(true);
-    const result = await registerUser(values);
     
-    if (result.success) {
-      toast({
-        title: "Registration Successful",
-        description: "Your account and biometric data have been saved.",
+    try {
+      // 1. Create User in Firebase Auth (Client-side)
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // 2. Update Profile Display Name
+      await updateProfile(user, { displayName: values.name });
+
+      // 3. Save supplementary profile data (including Face) via Server Action
+      // We pass the UID as the voterId to link them
+      const result = await registerUser({
+        ...values,
+        voterId: user.uid
       });
-      router.push('/login');
-    } else {
+      
+      if (result.success) {
+        toast({
+          title: "Registration Successful",
+          description: "Voter account and biometric profile created.",
+        });
+        router.push('/login');
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Profile Error",
+          description: result.error || "Failed to save biometric profile.",
+        });
+        setIsSubmitting(false);
+      }
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description: result.error,
+        description: error.message || "An unexpected error occurred during signup.",
       });
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   }
 
   return (
@@ -115,9 +142,9 @@ export function RegisterForm() {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input placeholder="John Doe" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -130,20 +157,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="voterId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Voter ID</FormLabel>
-              <FormControl>
-                <Input placeholder="Unique Voter ID" {...field} />
+                <Input placeholder="name@example.com" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -156,7 +170,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -169,7 +183,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Confirm Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
+                <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -180,10 +194,10 @@ export function RegisterForm() {
 
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Mandatory Face Capture</h3>
+                <h3 className="text-lg font-medium">Mandatory Biometric Setup</h3>
                 {capturedImage && <CheckCircle2 className="h-5 w-5 text-green-500" />}
             </div>
-            <p className="text-sm text-muted-foreground">This photo will be used for AI identity verification during login.</p>
+            <p className="text-sm text-muted-foreground">Your face capture is mandatory for secure identity verification during every login.</p>
             <div className="space-y-4">
                 <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
                     <video ref={videoRef} className={cn("w-full h-full object-cover", !hasCameraPermission || capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
@@ -194,9 +208,9 @@ export function RegisterForm() {
                     {hasCameraPermission === null && <Loader2 className="animate-spin" />}
                     {hasCameraPermission === false && (
                         <Alert variant="destructive" className="m-4">
-                            <AlertTitle>Camera Required</AlertTitle>
+                            <AlertTitle>Webcam Required</AlertTitle>
                             <AlertDescription>
-                                Face capture is mandatory for voting security. Please enable camera access.
+                                Biometric enrollment is mandatory for voting security.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -205,10 +219,10 @@ export function RegisterForm() {
                  <div className="flex justify-center gap-4">
                     {!capturedImage ? (
                     <Button type="button" onClick={handleCapture} disabled={isSubmitting || !hasCameraPermission} variant="secondary">
-                        <Camera className="mr-2" /> Capture Face Photo
+                        <Camera className="mr-2" /> Enroll Biometrics
                     </Button>
                     ) : (
-                    <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting}>Retake Photo</Button>
+                    <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting}>Retake Enrollment Photo</Button>
                     )}
                 </div>
                 {form.formState.errors.faceImage && (
@@ -221,7 +235,7 @@ export function RegisterForm() {
 
 
         <Button type="submit" className="w-full mt-4" disabled={isSubmitting || !capturedImage}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Complete Registration"}
+          {isSubmitting ? <Loader2 className="animate-spin" /> : "Complete Secure Registration"}
         </Button>
       </form>
     </Form>
