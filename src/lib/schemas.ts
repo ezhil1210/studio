@@ -23,6 +23,7 @@ export const loginSchema = z.object({
 
 export type LoginSchema = z.infer<typeof loginSchema>;
 
+// Face verification schemas
 export const FaceMatchInputSchema = z.object({
   registeredImage: z.string().describe("The original face image the user registered with, as a data URI."),
   capturedFaceImage: z.string().describe("The new face image captured during login, as a data URI."),
@@ -30,6 +31,6 @@ export const FaceMatchInputSchema = z.object({
 export type FaceMatchInput = z.infer<typeof FaceMatchInputSchema>;
 
 export const FaceMatchOutputSchema = z.object({
-  isMatch: z.boolean().describe('Whether the new face image matches the registered one.'),
+  isMatch: z.boolean().describe('Whether the person in the two images is the same.'),
 });
 export type FaceMatchOutput = z.infer<typeof FaceMatchOutputSchema>;

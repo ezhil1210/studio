@@ -2,7 +2,6 @@
 "use server";
 
 import {
-  signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInAnonymously,
@@ -28,6 +27,8 @@ import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
 import { RegisterSchema } from "@/lib/schemas";
 
+// Types for Admin SDK usage
+type AdminApp = import('firebase-admin/app').App;
 
 type ActionResult = {
   success: boolean;
@@ -35,7 +36,7 @@ type ActionResult = {
   uid?: string;
 };
 
-// Server-side Firebase initialization (for client-facing operations)
+// Client SDK initialization (Used by Server Actions acting as a client)
 function getFirebaseApp(): FirebaseApp {
   if (getApps().length) {
     return getApp();
@@ -43,12 +44,33 @@ function getFirebaseApp(): FirebaseApp {
   return initializeApp(firebaseConfig);
 }
 
+function getDb() {
+  return getFirestore(getFirebaseApp());
+}
+
 function getFirebaseAuth() {
   return getAuth(getFirebaseApp());
 }
 
-function getDb() {
-  return getFirestore(getFirebaseApp());
+// Securely initialize Firebase Admin
+async function getAdminServices() {
+    const { initializeApp, getApps } = await import('firebase-admin/app');
+    const { getAuth } = await import('firebase-admin/auth');
+    const { getFirestore } = await import('firebase-admin/firestore');
+
+    let adminApp: AdminApp;
+    if (getApps().length === 0) {
+        adminApp = initializeApp({
+            projectId: firebaseConfig.projectId,
+        });
+    } else {
+        adminApp = getApps()[0];
+    }
+
+    return {
+        adminAuth: getAuth(adminApp),
+        adminDb: getFirestore(adminApp),
+    };
 }
 
 // --- AUTH ACTIONS ---
@@ -73,7 +95,6 @@ export async function registerUser(values: RegisterSchema): Promise<ActionResult
     );
     const user = userCredential.user;
 
-    // Set the user's display name
     await updateProfile(user, { displayName: values.name });
 
     const db = getDb();
@@ -85,18 +106,16 @@ export async function registerUser(values: RegisterSchema): Promise<ActionResult
       email: values.email,
       hashedVoterId: createHash("sha256").update(values.voterId).digest("hex"),
       registrationDate: Timestamp.now().toDate().toISOString(),
-      ...(values.faceImage && { faceImage: values.faceImage }),
+      faceImage: values.faceImage || null,
     };
 
     await setDoc(voterDocRef, newVoter);
 
     return { success: true, uid: user.uid };
   } catch (error: any) {
-    let errorMessage = "An unexpected error occurred.";
+    let errorMessage = error.message || "An unexpected error occurred.";
     if (error.code === 'auth/email-already-in-use') {
       errorMessage = "This email address is already in use.";
-    } else if (error.code === 'auth/weak-password') {
-      errorMessage = "The password is too weak.";
     }
     return { success: false, error: errorMessage };
   }
@@ -111,97 +130,64 @@ export async function loginUser({ email, password }: { email?: string; password?
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return { success: true, uid: userCredential.user.uid };
   } catch (error: any) {
-    let errorMessage = "An unexpected error occurred.";
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-      errorMessage = "Invalid email or password.";
-    }
-    return { success: false, error: errorMessage };
+    return { success: false, error: "Invalid email or password." };
   }
 }
 
 export async function loginWithFace({ email, capturedImage }: { email: string; capturedImage: string; }): Promise<{success: boolean; token?: string; error?: string;}> {
   try {
-    const { getAuth: getAdminAuth } = await import('firebase-admin/auth');
-    const { getFirestore: getAdminFirestore } = await import('firebase-admin/firestore');
-    const { initializeApp: initializeAdminApp, getApps: getAdminApps } = await import('firebase-admin/app');
-    type App = import('firebase-admin/app').App;
+    const { adminAuth, adminDb } = await getAdminServices();
     const { verifyFace } = await import('@/ai/flows/verify-face-flow');
 
-    let adminApp: App;
-    if (getAdminApps().length > 0) {
-        adminApp = getAdminApps()[0]!;
-    } else {
-        adminApp = initializeAdminApp();
+    // 1. Get User by Email
+    let userRecord;
+    try {
+        userRecord = await adminAuth.getUserByEmail(email);
+    } catch (e) {
+        return { success: false, error: "No user found with this email address." };
     }
-    
-    const adminAuth = getAdminAuth(adminApp);
-    const adminDb = getAdminFirestore(adminApp);
-
-    // 1. Get User
-    const userRecord = await adminAuth.getUserByEmail(email);
 
     // 2. Get registered face image from Firestore
     const voterDoc = await adminDb.collection('voters').doc(userRecord.uid).get();
+    const voterData = voterDoc.data();
 
-    if (!voterDoc.exists() || !voterDoc.data()?.faceImage) {
-        return { success: false, error: 'No face registration found for this user. Please register with your face first or use your password.' };
+    if (!voterDoc.exists || !voterData?.faceImage) {
+        return { success: false, error: 'No face registration found. Please use your password to log in or register again with a photo.' };
     }
-    const registeredImage = voterDoc.data()?.faceImage;
+    const registeredImage = voterData.faceImage;
 
-    // 3. AI-powered face verification
+    // 3. AI Comparison
     const verificationResult = await verifyFace({
       registeredImage: registeredImage,
       capturedFaceImage: capturedImage,
     });
 
     if (!verificationResult.isMatch) {
-        return { success: false, error: 'Face verification failed. The provided image does not match the registered profile.' };
+        return { success: false, error: 'Identity verification failed. The provided photo does not match our records.' };
     }
 
-    // 4. If verification is successful, create a custom token
+    // 4. Create custom token for secure sign-in
     const customToken = await adminAuth.createCustomToken(userRecord.uid);
     return { success: true, token: customToken };
 
   } catch (error: any) {
-    console.error("Face login error:", error);
-    if (error.code === 'auth/user-not-found') {
-        return { success: false, error: "No user found with this email address." };
-    }
-    const errorMessage = error.message || 'An unexpected error occurred during face login.';
-    return { success: false, error: errorMessage };
+    console.error("Face login internal error:", error);
+    return { success: false, error: error.message || 'An unexpected error occurred during face login.' };
   }
 }
-
 
 export async function logoutUser(uid: string | null): Promise<ActionResult> {
   try {
      if (uid) {
-        const { getAuth: getAdminAuth } = await import('firebase-admin/auth');
-        const { initializeApp: initializeAdminApp, getApps: getAdminApps } = await import('firebase-admin/app');
-        type App = import('firebase-admin/app').App;
-
-        let adminApp: App;
-        if (getAdminApps().length > 0) {
-            adminApp = getAdminApps()[0]!;
-        } else {
-            adminApp = initializeAdminApp();
-        }
-        
-        const adminAuth = getAdminAuth(adminApp);
+        const { adminAuth } = await getAdminServices();
         const userRecord = await adminAuth.getUser(uid);
-
-        // A user is anonymous if they have no providers (e.g., no email/password, google, etc.)
         if (userRecord.providerData.length === 0) {
             await adminAuth.deleteUser(uid);
         }
      }
-     
-    // The client will handle actual sign out and redirect.
     return { success: true };
   } catch (error: any) {
-    console.error("Logout failed:", error)
-    // Don't block client logout even if server-side deletion fails
-    return { success: true, error: "Failed to delete anonymous user, but proceeding with logout." };
+    return { success: true }; // Proceed with logout regardless
   }
 }
 
@@ -213,8 +199,7 @@ export async function castVote({
   candidate: string;
 }): Promise<ActionResult> {
   const db = getDb();
-  // A temporary, session-based voter ID
-  const voterId = `session-voter-${'string'}-${Math.random()}`;
+  const voterId = `voter-${Math.random().toString(36).substr(2, 9)}`;
 
   try {
     const lastBlockQuery = query(
@@ -224,14 +209,15 @@ export async function castVote({
     );
     const lastBlockSnapshot = await getDocs(lastBlockQuery);
     const previousBlockHash = lastBlockSnapshot.empty
-      ? "0".repeat(64) // Genesis block
+      ? "0".repeat(64)
       : lastBlockSnapshot.docs[0].data().hash;
 
     const blockId = doc(collection(db, "blocks")).id;
+    const voteId = doc(collection(db, `blocks/${blockId}/votes`)).id;
 
     const newVote = {
-      id: doc(collection(db, `blocks/${blockId}/votes`)).id,
-      voterId: voterId, // Use session-based ID
+      id: voteId,
+      voterId: voterId,
       encryptedVoteData: candidate,
       timestamp: Timestamp.now().toDate().toISOString(),
       blockId: blockId,
@@ -242,7 +228,7 @@ export async function castVote({
       timestamp: newVote.timestamp,
       previousBlockHash: previousBlockHash,
       voteIds: [newVote.id],
-      voterIds: [voterId], // Use session-based ID
+      voterIds: [voterId],
       hash: "",
     };
 
@@ -258,13 +244,8 @@ export async function castVote({
       .digest("hex");
 
     const batch = writeBatch(db);
-
-    const newBlockRef = doc(db, "blocks", newBlockData.id);
-    batch.set(newBlockRef, newBlockData);
-
-    const newVoteRef = doc(db, `blocks/${newBlockData.id}/votes`, newVote.id);
-    batch.set(newVoteRef, newVote);
-
+    batch.set(doc(db, "blocks", newBlockData.id), newBlockData);
+    batch.set(doc(db, `blocks/${newBlockData.id}/votes`, newVote.id), newVote);
     await batch.commit();
 
     revalidatePath("/vote");
@@ -273,80 +254,6 @@ export async function castVote({
 
     return { success: true };
   } catch (error: any) {
-    console.error("Vote casting error:", error);
-     if (error.code === 'permission-denied') {
-        return { success: false, error: "You do not have permission to cast a vote." };
-    }
     return { success: false, error: "Could not cast vote. Please try again." };
   }
 }
-
-
-// --- DATA FETCHING ACTIONS ---
-
-export async function getVoteResults(): Promise<Record<string, number>> {
-  const db = getDb();
-  const results: Record<string, number> = {
-    "Candidate Alpha": 0,
-    "Candidate Bravo": 0,
-    "Candidate Charlie": 0,
-  };
-  const blocksSnapshot = await getDocs(collection(db, "blocks"));
-  
-  for (const blockDoc of blocksSnapshot.docs) {
-    const votesQuery = query(collection(db, `blocks/${blockDoc.id}/votes`));
-    const votesSnapshot = await getDocs(votesQuery);
-    votesSnapshot.forEach(voteDoc => {
-      const voteData = voteDoc.data();
-      if (voteData.encryptedVoteData in results) {
-        results[voteData.encryptedVoteData]++;
-      }
-    });
-  }
-
-  return results;
-}
-
-type Vote = {
-  id: string;
-  voterId: string;
-  encryptedVoteData: string;
-  timestamp: string;
-  blockId: string;
-};
-
-type Block = {
-  id: string;
-  timestamp: string;
-  previousBlockHash: string;
-  hash: string;
-  voteIds: string[];
-  voterIds: string[];
-  votes: Vote[];
-};
-
-export async function getBlockchainData(): Promise<Block[]> {
-  const db = getDb();
-  const blocks: Block[] = [];
-  const blocksSnapshot = await getDocs(query(collection(db, "blocks"), orderBy("timestamp", "asc")));
-  
-  for (const blockDoc of blocksSnapshot.docs) {
-      const blockData = blockDoc.data() as Omit<Block, 'votes'>;
-      const votes: Vote[] = [];
-
-      const votesQuery = query(collection(db, `blocks/${blockDoc.id}/votes`));
-      const votesSnapshot = await getDocs(votesQuery);
-      votesSnapshot.forEach(voteDoc => {
-          votes.push(voteDoc.data() as Vote);
-      });
-
-      blocks.push({
-          ...blockData,
-          votes: votes,
-      });
-  }
-  
-  return blocks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-}
-
-    

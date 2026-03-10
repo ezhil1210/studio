@@ -1,15 +1,14 @@
 
 'use server';
 /**
- * @fileOverview A flow to verify if two face images match.
+ * @fileOverview A flow to compare two face images using AI prompting.
  *
- * - verifyFace - A function that handles the face verification process.
+ * - verifyFace - A function that handles the face comparison process.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 import { FaceMatchInputSchema, FaceMatchOutputSchema, type FaceMatchInput, type FaceMatchOutput } from '@/lib/schemas';
-
 
 const verifyFacePrompt = ai.definePrompt({
     name: 'verifyFacePrompt',
@@ -21,12 +20,12 @@ const verifyFacePrompt = ai.definePrompt({
             match: z.boolean().describe('True if the faces in the two images belong to the same person.'),
         })
     },
-    prompt: `You are a highly accurate facial recognition system. Compare the person in the "Registered Image" with the person in the "New Image". Determine if they are the same person.
-
-    Registered Image: {{media url=registeredImage}}
-    New Image: {{media url=capturedFaceImage}}
-
-    Only respond with whether it is a match.
+    prompt: `You are an identity verification assistant. Look closely at these two photographs and decide if they show the same individual.
+    
+    Photo 1 (Registered at Signup): {{media url=registeredImage}}
+    Photo 2 (Live Capture at Login): {{media url=capturedFaceImage}}
+    
+    Determine if there is a high degree of certainty that these depict the same person.
     `,
 });
 
@@ -40,7 +39,6 @@ const verifyFaceFlow = ai.defineFlow(
     const { output } = await verifyFacePrompt(input);
 
     if (!output) {
-        // If the model fails to provide an output, we should default to not matching.
         return { isMatch: false };
     }
 
@@ -49,10 +47,8 @@ const verifyFaceFlow = ai.defineFlow(
 );
 
 /**
- * Compares two face images to see if they are a match.
- * This function is a wrapper around a Genkit flow that uses a multimodal AI model.
- * @param input An object containing the registered image and the newly captured image.
- * @returns A promise that resolves to an object indicating if the faces match.
+ * Compares two images using an AI prompt to see if they depict the same person.
+ * @param input Object containing the registered and live images as data URIs.
  */
 export async function verifyFace(input: FaceMatchInput): Promise<FaceMatchOutput> {
     return verifyFaceFlow(input);
