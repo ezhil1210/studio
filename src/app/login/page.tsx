@@ -1,65 +1,19 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
 import { LoginForm } from "@/components/auth/LoginForm";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useUser } from "@/firebase";
+import { ShieldCheck, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { Loader2, User, ShieldCheck } from "lucide-react";
-import { useUser, useAuth } from "@/firebase";
-import { demoLogin } from "@/app/actions";
-import { signInAnonymously } from "firebase/auth";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { toast } = useToast();
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
-  useEffect(() => {
-    if (!isUserLoading && user) {
-      router.push('/vote');
-    }
-  }, [user, isUserLoading, router]);
+  // We removed the auto-redirect useEffect here to ensure 
+  // the biometric check in LoginForm is never skipped.
 
-  const handleDemoClick = async () => {
-    if (!auth) return;
-    setIsDemoLoading(true);
-    
-    // We call the server action to check if demo mode is allowed,
-    // then perform the actual sign-in on the client to avoid token issues.
-    const result = await demoLogin();
-    
-    if (result.success) {
-      try {
-        await signInAnonymously(auth);
-        toast({
-          title: "Demo Access Granted",
-          description: "Logged in as a guest for testing purposes.",
-        });
-        router.push('/vote');
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Demo Login Failed",
-          description: "Could not initialize demo session.",
-        });
-      }
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Demo Access Denied",
-        description: "Demo mode is currently unavailable.",
-      });
-    }
-    setIsDemoLoading(false);
-  };
-
-  if (isUserLoading || user) {
+  if (isUserLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] w-full">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -79,34 +33,14 @@ export default function LoginPage() {
               <ShieldCheck className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Secure Identity Check</CardTitle>
+          <CardTitle className="text-2xl font-bold">Secure Identity Portal</CardTitle>
           <CardDescription>
-            Multi-factor authentication (Password + Face) is mandatory to ensure voting integrity.
+            Multi-factor authentication (Password + Face) is mandatory for all voters.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <LoginForm />
           
-          <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card/80 px-2 text-muted-foreground backdrop-blur-sm">
-                  Developer Options
-                  </span>
-              </div>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleDemoClick}
-            disabled={isDemoLoading}
-          >
-            {isDemoLoading ? <Loader2 className="animate-spin" /> : <><User className="mr-2"/> Bypass (Demo Mode)</>}
-          </Button>
-
           <div className="mt-6 text-center text-sm">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="font-semibold text-primary hover:underline">

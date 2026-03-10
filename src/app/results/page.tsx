@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/card';
 import { BarChart, Loader2 } from 'lucide-react';
 import { collection, query, getDocs } from 'firebase/firestore';
-import { useFirestore, useCollection, useUser } from '@/firebase';
-import ManualHeader from '@/components/layout/ManualHeader';
+import { useFirestore, useCollection } from '@/firebase';
+import Header from '@/components/layout/Header';
 
 
 type ChartData = { name: string; votes: number }[];
@@ -76,7 +76,7 @@ export default function ResultsPage() {
 
   return (
     <>
-      <ManualHeader />
+      <Header />
       <div className="p-4 md:p-8 w-full max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold font-headline">

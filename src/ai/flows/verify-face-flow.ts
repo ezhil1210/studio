@@ -18,14 +18,22 @@ const verifyFacePrompt = ai.definePrompt({
     output: {
         schema: z.object({
             match: z.boolean().describe('True if the faces in the two images belong to the same person.'),
+            confidence: z.number().describe('A score from 0 to 1 indicating the certainty of the match.'),
         })
     },
-    prompt: `You are an identity verification assistant. Look closely at these two photographs and decide if they show the same individual.
+    prompt: `You are a professional identity verification agent for a high-security voting system. 
     
-    Photo 1 (Registered at Signup): {{media url=registeredImage}}
-    Photo 2 (Live Capture at Login): {{media url=capturedFaceImage}}
+    You are provided with two images:
+    - Photo 1 (Reference): Captured during user registration.
+    - Photo 2 (Live): Captured just now during a login attempt.
     
-    Determine if there is a high degree of certainty that these depict the same person.
+    Analyze both images carefully. Consider facial features, structure, and proportions. 
+    A "match" should only be true if you are highly confident that both images depict the EXACT SAME person.
+    
+    Photo 1: {{media url=registeredImage}}
+    Photo 2: {{media url=capturedFaceImage}}
+    
+    Respond with whether they match and your confidence score.
     `,
 });
 
@@ -38,7 +46,7 @@ const verifyFaceFlow = ai.defineFlow(
   async (input) => {
     const { output } = await verifyFacePrompt(input);
 
-    if (!output) {
+    if (!output || output.confidence < 0.7) {
         return { isMatch: false };
     }
 

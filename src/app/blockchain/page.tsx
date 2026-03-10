@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useCollection, useUser, useFirestore } from '@/firebase';
+import { useCollection, useFirestore } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Blocks, Clock, Hash, Link as LinkIcon, Fingerprint, FileJson, Loader2 } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
-import ManualHeader from '@/components/layout/ManualHeader';
+import Header from '@/components/layout/Header';
 
 
 type Vote = {
@@ -24,7 +24,7 @@ type Block = {
   hash: string;
   voteIds: string[];
   voterIds: string[];
-  votes: Vote[]; // This will be populated client-side if needed, but not directly from the block doc
+  votes: Vote[]; 
 };
 
 export default function BlockchainPage() {
@@ -40,7 +40,7 @@ export default function BlockchainPage() {
   if (isLoadingBlockchain) {
      return (
       <>
-        <ManualHeader />
+        <Header />
         <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -50,7 +50,7 @@ export default function BlockchainPage() {
 
   return (
     <>
-    <ManualHeader />
+    <Header />
     <div className="p-4 md:p-8 w-full max-w-7xl">
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold font-headline">Blockchain Ledger</h1>

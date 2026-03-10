@@ -4,14 +4,13 @@ import { getFirestore } from 'firebase-admin/firestore';
 import 'dotenv/config';
 
 // Initialize Firebase Admin SDK
-initializeApp({
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'studio-7207673344-fd1a1',
-});
+// This project uses standard environment variables for initialization.
+initializeApp();
 
 const db = getFirestore();
 
 /**
- * Recursively deletes a collection and all its subcollections.
+ * Recursively deletes a collection and all its subdocuments.
  */
 async function deleteCollection(collectionPath: string, batchSize: number = 100) {
     const collectionRef = db.collection(collectionPath);
@@ -27,12 +26,10 @@ async function deleteQueryBatch(query: any, resolve: any) {
 
     const batchSize = snapshot.size;
     if (batchSize === 0) {
-        // When there are no documents left, we are done
         resolve();
         return;
     }
 
-    // Delete documents in a batch
     const batch = db.batch();
     snapshot.docs.forEach((doc: any) => {
         batch.delete(doc.ref);
@@ -40,25 +37,24 @@ async function deleteQueryBatch(query: any, resolve: any) {
 
     await batch.commit();
 
-    // Recurse on the next process tick, to avoid exploding the stack.
     process.nextTick(() => {
         deleteQueryBatch(query, resolve);
     });
 }
 
 async function flushDatabase() {
-    console.log("Starting full database flush...");
+    console.log("!!! ATTENTION: Starting full database flush !!!");
     
     try {
-        console.log("Deleting 'blocks' collection...");
+        console.log("Flushing 'blocks' collection...");
         await deleteCollection('blocks');
         
-        console.log("Deleting 'voters' collection...");
+        console.log("Flushing 'voters' collection...");
         await deleteCollection('voters');
         
-        console.log("Database flush complete. All records have been cleared.");
+        console.log("Success: Database has been cleared.");
     } catch (error) {
-        console.error("Error during database flush:", error);
+        console.error("Flush failed:", error);
         process.exit(1);
     }
 }
