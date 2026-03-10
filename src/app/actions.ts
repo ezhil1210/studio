@@ -59,7 +59,8 @@ async function getAdminServices() {
     let adminApp;
     
     if (apps.length === 0) {
-        // Attempt the most automatic initialization for cloud environments
+        // Attempt initialization. In Firebase Studio, initializeApp() should ideally
+        // pick up the workspace credentials.
         try {
             adminApp = initializeAdminApp();
         } catch (e) {
@@ -147,7 +148,6 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
   
   try {
     // 1. Get registered face image from Firestore using CLIENT SDK
-    // This bypasses Admin SDK auth issues for the initial data lookup
     const db = getDb();
     const votersQuery = query(collection(db, 'voters'), where('email', '==', trimmedEmail));
     const votersSnapshot = await getDocs(votersQuery);
@@ -180,11 +180,16 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
     // 3. Create custom token for secure sign-in (Requires Admin SDK)
     try {
         const { adminAuth } = await getAdminServices();
+        // createCustomToken requires the service account to have 'Service Account Token Creator' role.
+        // If this fails, it's a project permission issue.
         const customToken = await adminAuth.createCustomToken(uid);
         return { success: true, token: customToken };
     } catch (adminError: any) {
         console.error("Admin SDK Token Error:", adminError);
-        return { success: false, error: 'The verification matched, but the secure login service is currently unavailable. Please use your password.' };
+        return { 
+          success: false, 
+          error: `Verification successful, but session creation failed. Ensure your service account has 'Service Account Token Creator' permissions, or use your password for now.` 
+        };
     }
 
   } catch (error: any) {
@@ -195,21 +200,22 @@ export async function loginWithFace({ email, capturedImage }: { email: string; c
 
 export async function logoutUser(uid: string | null): Promise<ActionResult> {
   try {
-     if (uid) {
-        // Optional server-side cleanup for anonymous users
+    // Attempt cleanup if UID is provided
+    if (uid) {
         try {
             const { adminAuth } = await getAdminServices();
             const userRecord = await adminAuth.getUser(uid);
+            // If it's an anonymous user, we could delete them here
             if (userRecord.providerData.length === 0) {
                 await adminAuth.deleteUser(uid);
             }
         } catch (e) {
-            // User might already be deleted or not found, which is fine for logout
+            // Cleanup failed, but that's okay for logout
         }
-     }
+    }
     return { success: true };
   } catch (error: any) {
-    return { success: true }; // Proceed with client logout regardless
+    return { success: true };
   }
 }
 
