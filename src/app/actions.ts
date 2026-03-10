@@ -61,8 +61,10 @@ async function getAdminServices() {
     
     if (apps.length === 0) {
         try {
+            // Prefer automatic initialization in cloud environments
             adminApp = initializeAdminApp();
         } catch (e) {
+            // Fallback to config-based initialization
             adminApp = initializeAdminApp({
                 projectId: firebaseConfig.projectId,
             });
@@ -131,42 +133,64 @@ export async function loginUser(values: LoginSchema): Promise<ActionResult> {
   try {
     const auth = getFirebaseAuth();
     
-    // 1. Password check
-    const userCredential = await signInWithEmailAndPassword(auth, email, values.password);
-    const uid = userCredential.user.uid;
+    // 1. Password verification
+    let user;
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, values.password);
+      user = userCredential.user;
+    } catch (authError: any) {
+      console.error("Auth verification failed:", authError);
+      return { success: false, error: "Invalid email or password." };
+    }
+    const uid = user.uid;
 
-    // 2. Fetch voter profile for face verification
+    // 2. Fetch voter profile for biometric verification
     const db = getDb();
-    const voterDoc = await getDoc(doc(db, "voters", uid));
+    let voterDoc;
+    try {
+      voterDoc = await getDoc(doc(db, "voters", uid));
+    } catch (dbError: any) {
+      return { success: false, error: "Failed to access voter profile. Please try again." };
+    }
     
     if (!voterDoc.exists()) {
-        return { success: false, error: "Voter profile not found." };
+        return { success: false, error: "Voter record not found for this account." };
     }
     
     const voterData = voterDoc.data();
     if (!voterData.faceImage) {
-        return { success: false, error: "Face data missing from profile. Please contact support." };
+        return { success: false, error: "Face biometric data missing. Please contact system administrator." };
     }
 
     // 3. AI Face Verification
-    const { verifyFace } = await import('@/ai/flows/verify-face-flow');
-    const verificationResult = await verifyFace({
-      registeredImage: voterData.faceImage,
-      capturedFaceImage: values.faceImage,
-    });
+    try {
+      const { verifyFace } = await import('@/ai/flows/verify-face-flow');
+      const verificationResult = await verifyFace({
+        registeredImage: voterData.faceImage,
+        capturedFaceImage: values.faceImage,
+      });
 
-    if (!verificationResult.isMatch) {
-        return { success: false, error: "Face verification failed. Captured photo does not match our records." };
+      if (!verificationResult.isMatch) {
+          return { success: false, error: "Face verification failed. The captured photo does not match our records." };
+      }
+    } catch (aiError: any) {
+      console.error("AI Flow error:", aiError);
+      return { success: false, error: "Face verification service is currently unavailable." };
     }
 
-    // 4. Create custom token for secure sign-in context (to ensure atomic multi-factor success)
-    const { adminAuth } = await getAdminServices();
-    const customToken = await adminAuth.createCustomToken(uid);
-
-    return { success: true, token: customToken, uid };
+    // 4. Create custom token for client sign-in
+    try {
+      const { adminAuth } = await getAdminServices();
+      const customToken = await adminAuth.createCustomToken(uid);
+      return { success: true, token: customToken, uid };
+    } catch (adminError: any) {
+      console.error("Token generation error:", adminError);
+      return { success: false, error: "MFA passed, but failed to establish secure session. Contact support." };
+    }
+    
   } catch (error: any) {
-    console.error("Login error:", error);
-    return { success: false, error: "Invalid email, password, or face verification failed." };
+    console.error("Critical Login error:", error);
+    return { success: false, error: "A critical error occurred. Please try again later." };
   }
 }
 
