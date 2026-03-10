@@ -1,4 +1,3 @@
-
 "use server";
 
 import {
@@ -12,6 +11,7 @@ import {
   doc,
   setDoc,
   getDocs,
+  getDoc,
   query,
   where,
   writeBatch,
@@ -25,12 +25,13 @@ import { revalidatePath } from "next/cache";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
-import { RegisterSchema } from "@/lib/schemas";
+import { RegisterSchema, LoginSchema } from "@/lib/schemas";
 
 type ActionResult = {
   success: boolean;
   error?: string;
   uid?: string;
+  token?: string;
 };
 
 // Client SDK initialization (Used by Server Actions acting as a client)
@@ -59,12 +60,9 @@ async function getAdminServices() {
     let adminApp;
     
     if (apps.length === 0) {
-        // Attempt initialization. In Firebase Studio, initializeApp() should ideally
-        // pick up the workspace credentials.
         try {
             adminApp = initializeAdminApp();
         } catch (e) {
-            // Fallback to project ID if automatic fails
             adminApp = initializeAdminApp({
                 projectId: firebaseConfig.projectId,
             });
@@ -113,7 +111,7 @@ export async function registerUser(values: RegisterSchema): Promise<ActionResult
       email: email,
       hashedVoterId: createHash("sha256").update(values.voterId).digest("hex"),
       registrationDate: Timestamp.now().toDate().toISOString(),
-      faceImage: values.faceImage || null,
+      faceImage: values.faceImage,
     };
 
     await setDoc(voterDocRef, newVoter);
@@ -128,91 +126,52 @@ export async function registerUser(values: RegisterSchema): Promise<ActionResult
   }
 }
 
-export async function loginUser({ email, password }: { email?: string; password?: string }): Promise<ActionResult> {
-  if (!email || !password) {
-    return { success: false, error: "Email and password are required." };
-  }
-  const trimmedEmail = email.trim().toLowerCase();
+export async function loginUser(values: LoginSchema): Promise<ActionResult> {
+  const email = values.email.trim().toLowerCase();
   try {
     const auth = getFirebaseAuth();
-    const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
-    return { success: true, uid: userCredential.user.uid };
-  } catch (error: any) {
-    return { success: false, error: "Invalid email or password." };
-  }
-}
+    
+    // 1. Password check
+    const userCredential = await signInWithEmailAndPassword(auth, email, values.password);
+    const uid = userCredential.user.uid;
 
-export async function loginWithFace({ email, capturedImage }: { email: string; capturedImage: string; }): Promise<{success: boolean; token?: string; error?: string;}> {
-  if (!email) return { success: false, error: "Email is required." };
-  const trimmedEmail = email.trim().toLowerCase();
-  
-  try {
-    // 1. Get registered face image from Firestore using CLIENT SDK
+    // 2. Fetch voter profile for face verification
     const db = getDb();
-    const votersQuery = query(collection(db, 'voters'), where('email', '==', trimmedEmail));
-    const votersSnapshot = await getDocs(votersQuery);
-
-    if (votersSnapshot.empty) {
-        return { success: false, error: 'No registered user found with this email address.' };
+    const voterDoc = await getDoc(doc(db, "voters", uid));
+    
+    if (!voterDoc.exists()) {
+        return { success: false, error: "Voter profile not found." };
     }
     
-    const voterDoc = votersSnapshot.docs[0];
     const voterData = voterDoc.data();
-    const uid = voterDoc.id;
-
-    if (!voterData?.faceImage) {
-        return { success: false, error: 'No face registration found for this account. Please login with your password.' };
+    if (!voterData.faceImage) {
+        return { success: false, error: "Face data missing from profile. Please contact support." };
     }
-    
-    const registeredImage = voterData.faceImage;
 
-    // 2. Perform AI Comparison
+    // 3. AI Face Verification
     const { verifyFace } = await import('@/ai/flows/verify-face-flow');
     const verificationResult = await verifyFace({
-      registeredImage: registeredImage,
-      capturedFaceImage: capturedImage,
+      registeredImage: voterData.faceImage,
+      capturedFaceImage: values.faceImage,
     });
 
     if (!verificationResult.isMatch) {
-        return { success: false, error: 'Identity verification failed. The captured photo does not match our records.' };
+        return { success: false, error: "Face verification failed. Captured photo does not match our records." };
     }
 
-    // 3. Create custom token for secure sign-in (Requires Admin SDK)
-    try {
-        const { adminAuth } = await getAdminServices();
-        // createCustomToken requires the service account to have 'Service Account Token Creator' role.
-        // If this fails, it's a project permission issue.
-        const customToken = await adminAuth.createCustomToken(uid);
-        return { success: true, token: customToken };
-    } catch (adminError: any) {
-        console.error("Admin SDK Token Error:", adminError);
-        return { 
-          success: false, 
-          error: `Verification successful, but session creation failed. Ensure your service account has 'Service Account Token Creator' permissions, or use your password for now.` 
-        };
-    }
+    // 4. Create custom token for secure sign-in context (to ensure atomic multi-factor success)
+    const { adminAuth } = await getAdminServices();
+    const customToken = await adminAuth.createCustomToken(uid);
 
+    return { success: true, token: customToken, uid };
   } catch (error: any) {
-    console.error("Face login internal error:", error);
-    return { success: false, error: `Login failed: ${error.message || 'An unexpected error occurred.'}` };
+    console.error("Login error:", error);
+    return { success: false, error: "Invalid email, password, or face verification failed." };
   }
 }
 
 export async function logoutUser(uid: string | null): Promise<ActionResult> {
   try {
-    // Attempt cleanup if UID is provided
-    if (uid) {
-        try {
-            const { adminAuth } = await getAdminServices();
-            const userRecord = await adminAuth.getUser(uid);
-            // If it's an anonymous user, we could delete them here
-            if (userRecord.providerData.length === 0) {
-                await adminAuth.deleteUser(uid);
-            }
-        } catch (e) {
-            // Cleanup failed, but that's okay for logout
-        }
-    }
     return { success: true };
   } catch (error: any) {
     return { success: true };

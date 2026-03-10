@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -19,8 +18,8 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { registerUser } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
-import { Loader2, Camera } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Loader2, Camera, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function RegisterForm() {
@@ -33,7 +32,6 @@ export function RegisterForm() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
 
   const form = useForm<RegisterSchema>({
     resolver: zodResolver(registerSchema),
@@ -47,27 +45,25 @@ export function RegisterForm() {
     },
   });
 
-  const getCameraPermission = async () => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setHasCameraPermission(false);
-        return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setHasCameraPermission(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setHasCameraPermission(false);
+          return;
       }
-    } catch (error) {
-      console.error("Error accessing camera:", error);
-      setHasCameraPermission(false);
-    }
-  };
-  
-  const handleEnableCamera = () => {
-      setIsCameraEnabled(true);
-      getCameraPermission();
-  }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setHasCameraPermission(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error("Error accessing camera:", error);
+        setHasCameraPermission(false);
+      }
+    };
+    getCameraPermission();
+  }, []);
 
   const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -81,6 +77,7 @@ export function RegisterForm() {
             const dataUri = canvas.toDataURL('image/jpeg');
             setCapturedImage(dataUri);
             form.setValue('faceImage', dataUri);
+            form.clearErrors('faceImage');
         }
     }
   };
@@ -92,18 +89,12 @@ export function RegisterForm() {
 
   async function onSubmit(values: RegisterSchema) {
     setIsSubmitting(true);
-    // Normalize input
-    const normalizedValues = {
-      ...values,
-      email: values.email.trim().toLowerCase(),
-    };
-    
-    const result = await registerUser(normalizedValues);
+    const result = await registerUser(values);
     
     if (result.success) {
       toast({
         title: "Registration Successful",
-        description: "Please login to continue.",
+        description: "Your account and biometric data have been saved.",
       });
       router.push('/login');
     } else {
@@ -152,7 +143,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Voter ID</FormLabel>
               <FormControl>
-                <Input placeholder="Your unique voter ID" {...field} />
+                <Input placeholder="Unique Voter ID" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -188,47 +179,49 @@ export function RegisterForm() {
         <Separator className="my-2" />
 
         <div className="space-y-4">
-            <h3 className="text-lg font-medium">Face Registration (Optional)</h3>
-            {!isCameraEnabled ? (
-                 <Button type="button" variant="outline" onClick={handleEnableCamera} className="w-full">
-                    <Camera className="mr-2" /> Enable Camera for Face Login
-                </Button>
-            ) : (
-                <div className="space-y-4">
-                    <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
-                        <video ref={videoRef} className={cn("w-full h-full object-cover", !hasCameraPermission || capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
-                        {capturedImage && (
-                            <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
-                        )}
+            <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Mandatory Face Capture</h3>
+                {capturedImage && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+            </div>
+            <p className="text-sm text-muted-foreground">This photo will be used for AI identity verification during login.</p>
+            <div className="space-y-4">
+                <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
+                    <video ref={videoRef} className={cn("w-full h-full object-cover", !hasCameraPermission || capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
+                    {capturedImage && (
+                        <img src={capturedImage} alt="Captured face" className="w-full h-full object-cover" />
+                    )}
 
-                        {hasCameraPermission === null && <p>Requesting camera permission...</p>}
-                        {hasCameraPermission === false && (
-                            <Alert variant="destructive" className="m-4">
-                                <AlertTitle>Camera Access Denied</AlertTitle>
-                                <AlertDescription>
-                                    Please enable camera permissions in your browser settings to use this feature.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        <canvas ref={canvasRef} className="hidden" />
-                    </div>
-                     <div className="flex justify-center gap-4">
-                        {hasCameraPermission && !capturedImage && (
-                        <Button type="button" onClick={handleCapture} disabled={isSubmitting}>
-                            <Camera className="mr-2" /> Capture Photo
-                        </Button>
-                        )}
-                        {hasCameraPermission && capturedImage && (
-                        <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting}>Retake Photo</Button>
-                        )}
-                    </div>
+                    {hasCameraPermission === null && <Loader2 className="animate-spin" />}
+                    {hasCameraPermission === false && (
+                        <Alert variant="destructive" className="m-4">
+                            <AlertTitle>Camera Required</AlertTitle>
+                            <AlertDescription>
+                                Face capture is mandatory for voting security. Please enable camera access.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    <canvas ref={canvasRef} className="hidden" />
                 </div>
-            )}
+                 <div className="flex justify-center gap-4">
+                    {!capturedImage ? (
+                    <Button type="button" onClick={handleCapture} disabled={isSubmitting || !hasCameraPermission} variant="secondary">
+                        <Camera className="mr-2" /> Capture Face Photo
+                    </Button>
+                    ) : (
+                    <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting}>Retake Photo</Button>
+                    )}
+                </div>
+                {form.formState.errors.faceImage && (
+                    <p className="text-sm font-medium text-destructive text-center">
+                        {form.formState.errors.faceImage.message}
+                    </p>
+                )}
+            </div>
         </div>
 
 
-        <Button type="submit" className="w-full mt-4" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Create Account"}
+        <Button type="submit" className="w-full mt-4" disabled={isSubmitting || !capturedImage}>
+          {isSubmitting ? <Loader2 className="animate-spin" /> : "Complete Registration"}
         </Button>
       </form>
     </Form>
