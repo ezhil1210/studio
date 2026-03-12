@@ -1,32 +1,15 @@
-'use client';
 
 import type { Metadata } from 'next';
-import { useState, useEffect } from 'react';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { usePathname } from 'next/navigation';
 
-// This is a workaround to satisfy the Metadata type which cannot be used in a client component.
-// In a real-world app, you'd handle metadata differently for client-rendered layouts.
-const metadata: Metadata = {
+export const metadata: Metadata = {
   title: 'eVoteChain',
   description: 'A secure, transparent, and tamper-proof e-voting system using blockchain technology.',
 };
-
-// Wrapper to ensure Toaster only renders on the client
-function ClientOnlyToaster() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  return isClient ? <Toaster /> : null;
-}
-
 
 export default function RootLayout({
   children,
@@ -36,8 +19,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>{String(metadata.title)}</title>
-        <meta name="description" content={String(metadata.description)} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -54,7 +35,7 @@ export default function RootLayout({
               </main>
               <Footer />
             </div>
-            <ClientOnlyToaster />
+            <Toaster />
         </FirebaseClientProvider>
       </body>
     </html>

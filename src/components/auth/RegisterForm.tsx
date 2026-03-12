@@ -98,7 +98,6 @@ export function RegisterForm() {
     
     try {
       // 1. Biometric Deduplication Check
-      // This prevents the same person from registering multiple accounts.
       setSubmittingStage('deduplication');
       const duplicateResult = await isFaceAlreadyRegistered(values.faceImage);
       
@@ -124,7 +123,7 @@ export function RegisterForm() {
         return;
       }
 
-      // 2. Create User in Firebase Auth (Client-side)
+      // 2. Create User in Firebase Auth
       setSubmittingStage('auth');
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
@@ -132,7 +131,7 @@ export function RegisterForm() {
       // 3. Update Profile Display Name
       await updateProfile(user, { displayName: values.name });
 
-      // 4. Save supplementary profile data via Server Action
+      // 4. Save supplementary profile data
       setSubmittingStage('profile');
       const result = await registerUser({
         ...values,
@@ -144,7 +143,8 @@ export function RegisterForm() {
           title: "Registration Successful",
           description: "Voter account and biometric profile created.",
         });
-        router.push('/login');
+        // Direct location change is more reliable for post-registration redirects
+        window.location.href = '/login';
       } else {
         toast({
           variant: "destructive",
