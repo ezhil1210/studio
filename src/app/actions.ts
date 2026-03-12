@@ -12,6 +12,7 @@ import {
   limit,
   Timestamp,
   writeBatch,
+  deleteDoc,
 } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
@@ -66,7 +67,6 @@ export async function registerUser(values: RegisterSchema): Promise<ActionResult
 
 /**
  * Verifies a captured face image against the user's registered image in Firestore.
- * This is the mandatory biometric second factor.
  */
 export async function verifyVoterBiometrics(uid: string, capturedFaceImage: string): Promise<ActionResult> {
   try {
@@ -100,20 +100,11 @@ export async function verifyVoterBiometrics(uid: string, capturedFaceImage: stri
   }
 }
 
-/**
- * Placeholder for any server-side cleanup during logout.
- */
 export async function logoutUser(uid: string | null): Promise<ActionResult> {
-  // No server-side cleanup required for this implementation
   return { success: true };
 }
 
-/**
- * Logic to handle a demo bypass login.
- */
 export async function demoLogin(): Promise<ActionResult> {
-  // Demo mode is handled primarily on the client via signInAnonymously
-  // This action validates that demo mode is acceptable.
   return { success: true };
 }
 
@@ -182,5 +173,42 @@ export async function castVote({
     return { success: true };
   } catch (error: any) {
     return { success: false, error: "Could not cast vote. Please try again." };
+  }
+}
+
+// --- ADMIN ACTIONS ---
+
+/**
+ * Resets the entire election by deleting all blocks, votes, and voter profiles.
+ */
+export async function resetElection(): Promise<ActionResult> {
+  const db = getDb();
+  try {
+    const blocksSnap = await getDocs(collection(db, "blocks"));
+    const votersSnap = await getDocs(collection(db, "voters"));
+
+    const batch = writeBatch(db);
+
+    // Delete voters
+    votersSnap.forEach((v) => batch.delete(v.ref));
+
+    // Delete blocks and their nested votes
+    for (const blockDoc of blocksSnap.docs) {
+      const votesSnap = await getDocs(collection(db, `blocks/${blockDoc.id}/votes`));
+      votesSnap.forEach((v) => batch.delete(v.ref));
+      batch.delete(blockDoc.ref);
+    }
+
+    await batch.commit();
+
+    revalidatePath("/");
+    revalidatePath("/results");
+    revalidatePath("/blockchain");
+    revalidatePath("/admin");
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Reset election error:", error);
+    return { success: false, error: "Failed to reset election data. Check console for details." };
   }
 }

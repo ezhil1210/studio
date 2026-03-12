@@ -13,10 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Vote, Loader2 } from "lucide-react";
+import { Menu, Vote, Loader2, ShieldCheck } from "lucide-react";
 import { useUser, useAuth } from "@/firebase";
 import { logoutUser } from "@/app/actions";
 import { signOut } from "firebase/auth";
+
+const ADMIN_EMAIL = 'admin@evotechain.com';
 
 const navLinks = [
   { href: "/vote", label: "Vote" },
@@ -41,6 +43,7 @@ export default function Header() {
     window.location.href = '/';
   };
 
+  const isAdmin = user?.email === ADMIN_EMAIL;
   const userInitial = user?.isAnonymous ? "D" : user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U";
 
   return (
@@ -64,6 +67,15 @@ export default function Header() {
                   {link.label}
                 </Link>
               ))}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-1 transition-colors text-primary font-bold hover:text-primary/80"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  Admin
+                </Link>
+              )}
             </nav>
           )}
         </div>
@@ -92,6 +104,15 @@ export default function Header() {
                         {link.label}
                       </Link>
                     ))}
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-2 transition-colors text-primary font-bold hover:text-primary/80"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        Admin Dashboard
+                      </Link>
+                    )}
                   </nav>
                 )}
               </SheetContent>
@@ -131,6 +152,11 @@ export default function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin">Admin Dashboard</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handleLogout}>
                   Log out
                 </DropdownMenuItem>
