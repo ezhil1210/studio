@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Metadata } from 'next';
@@ -34,9 +33,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const showHeader = !['/vote', '/results', '/blockchain'].includes(pathname);
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -52,7 +48,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <FirebaseClientProvider>
             <div className="relative flex min-h-screen w-full flex-col bg-background">
-              {showHeader && <Header />}
+              <Header />
               <main className="flex flex-1 flex-col items-center">
                 {children}
               </main>
