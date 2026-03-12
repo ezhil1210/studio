@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/
 import { cn } from "@/lib/utils";
 import { castVote } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, CheckCircle, Star, Heart, Triangle, Copy, Download } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle, Star, Heart, Triangle, Copy, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/firebase";
+
+const ADMIN_EMAIL = 'admin@evotechain.com';
 
 const candidates = [
   { name: "Candidate Alpha", icon: <Star className="h-16 w-16 text-yellow-400" /> },
@@ -23,7 +26,18 @@ export function VoteClient() {
   const { toast } = useToast();
   const { user } = useUser();
   
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   const handleVote = async () => {
+    if (isAdmin) {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "Administrators are strictly prohibited from casting votes to ensure election neutrality.",
+      });
+      return;
+    }
+
     if (!selectedCandidate) {
       toast({
         variant: "destructive",
@@ -70,6 +84,32 @@ export function VoteClient() {
       toast({ title: "Copied to clipboard" });
     }
   };
+
+  if (isAdmin) {
+    return (
+      <div className="p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-10rem)] w-full">
+        <Card className="w-full max-w-lg text-center shadow-2xl bg-card/80 backdrop-blur-sm border-2 border-destructive/20">
+          <CardHeader>
+            <div className="mx-auto bg-destructive/10 text-destructive rounded-full p-4 w-fit">
+              <ShieldAlert className="h-12 w-12" />
+            </div>
+            <CardTitle className="text-2xl mt-4">Administrative Restriction</CardTitle>
+            <CardDescription>
+              As an Election Administrator, you are prohibited from participating in active balloting to maintain system integrity.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              You may monitor the election progress via the Command Center.
+            </p>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/admin">Enter Command Center</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (voteReceipt) {
     return (

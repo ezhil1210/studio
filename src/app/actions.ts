@@ -12,6 +12,7 @@ import {
   limit,
   Timestamp,
   writeBatch,
+  deleteDoc,
 } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
@@ -49,9 +50,8 @@ function getDb() {
 export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promise<ActionResult> {
   try {
     const db = getDb();
-    // Limit scan to recent voters for performance in the prototype
-    const votersQuery = query(collection(db, "voters"), orderBy("registrationDate", "desc"), limit(10));
-    const votersSnap = await getDocs(votersQuery);
+    // Scan voters for identity matches
+    const votersSnap = await getDocs(collection(db, "voters"));
     
     if (votersSnap.empty) {
       return { success: true, isDuplicate: false };
@@ -220,16 +220,24 @@ export async function castVote({
 
 // --- ADMIN ACTIONS ---
 
+/**
+ * Performs a deep wipe of all election-related data in the database.
+ */
 export async function resetElection(): Promise<ActionResult> {
   const db = getDb();
   try {
-    const blocksSnap = await getDocs(collection(db, "blocks"));
+    // 1. Fetch all voters
     const votersSnap = await getDocs(collection(db, "voters"));
+    
+    // 2. Fetch all blocks
+    const blocksSnap = await getDocs(collection(db, "blocks"));
 
     const batch = writeBatch(db);
 
+    // Delete all voter profiles
     votersSnap.forEach((v) => batch.delete(v.ref));
 
+    // Delete all blocks and their sub-collection votes
     for (const blockDoc of blocksSnap.docs) {
       const votesSnap = await getDocs(collection(db, `blocks/${blockDoc.id}/votes`));
       votesSnap.forEach((v) => batch.delete(v.ref));
@@ -242,10 +250,11 @@ export async function resetElection(): Promise<ActionResult> {
     revalidatePath("/results");
     revalidatePath("/blockchain");
     revalidatePath("/admin");
+    revalidatePath("/admin/voters");
 
     return { success: true };
   } catch (error: any) {
     console.error("Reset election error:", error);
-    return { success: false, error: "Failed to reset election data. Check console for details." };
+    return { success: false, error: "Failed to securely wipe the database. Check logs." };
   }
 }

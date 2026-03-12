@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Vote, Loader2, ShieldCheck } from "lucide-react";
+import { Menu, Vote, Loader2, ShieldCheck, Users } from "lucide-react";
 import { useUser, useAuth } from "@/firebase";
 import { logoutUser } from "@/app/actions";
 import { signOut } from "firebase/auth";
@@ -31,15 +31,12 @@ export default function Header() {
   const auth = useAuth();
 
   const handleLogout = async () => {
-    // Pass the UID to the server action so it can delete the anonymous user if needed.
     await logoutUser(user?.uid || null);
 
-    // Also sign out on the client.
     if (auth) {
         await signOut(auth);
     }
     
-    // Force a full page reload to clear all client-side state.
     window.location.href = '/';
   };
 
@@ -68,13 +65,22 @@ export default function Header() {
                 </Link>
               ))}
               {isAdmin && (
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-1 transition-colors text-primary font-bold hover:text-primary/80"
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  Admin
-                </Link>
+                <div className="flex items-center gap-6">
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-1 transition-colors text-primary font-bold hover:text-primary/80"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Admin
+                  </Link>
+                  <Link
+                    href="/admin/voters"
+                    className="flex items-center gap-1 transition-colors text-primary font-bold hover:text-primary/80"
+                  >
+                    <Users className="h-4 w-4" />
+                    Voters
+                  </Link>
+                </div>
               )}
             </nav>
           )}
@@ -105,13 +111,22 @@ export default function Header() {
                       </Link>
                     ))}
                     {isAdmin && (
-                      <Link
-                        href="/admin"
-                        className="flex items-center gap-2 transition-colors text-primary font-bold hover:text-primary/80"
-                      >
-                        <ShieldCheck className="h-4 w-4" />
-                        Admin Dashboard
-                      </Link>
+                      <>
+                        <Link
+                          href="/admin"
+                          className="flex items-center gap-2 transition-colors text-primary font-bold hover:text-primary/80"
+                        >
+                          <ShieldCheck className="h-4 w-4" />
+                          Admin Dashboard
+                        </Link>
+                        <Link
+                          href="/admin/voters"
+                          className="flex items-center gap-2 transition-colors text-primary font-bold hover:text-primary/80"
+                        >
+                          <Users className="h-4 w-4" />
+                          Voter Registry
+                        </Link>
+                      </>
                     )}
                   </nav>
                 )}
@@ -153,9 +168,14 @@ export default function Header() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin">Admin Dashboard</Link>
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">Command Center</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/voters">Voter Registry</Link>
+                    </DropdownMenuItem>
+                  </>
                 )}
                 <DropdownMenuItem onClick={handleLogout}>
                   Log out

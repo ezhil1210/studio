@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -13,7 +14,8 @@ import {
   RefreshCw, 
   Loader2, 
   CheckCircle2, 
-  AlertTriangle 
+  AlertTriangle,
+  UserCheck
 } from 'lucide-react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { resetElection } from '@/app/actions';
@@ -29,6 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import Link from 'next/link';
 
 const ADMIN_EMAIL = 'admin@evotechain.com';
 
@@ -51,14 +54,16 @@ export default function AdminDashboard() {
     const result = await resetElection();
     if (result.success) {
       toast({
-        title: "Election Reset Successful",
-        description: "All blockchain records and voter profiles have been cleared.",
+        title: "Database Wipe Successful",
+        description: "All blockchain records and voter profiles have been permanently deleted.",
       });
+      // Force refresh to clear state
+      window.location.reload();
     } else {
       toast({
         variant: "destructive",
         title: "Reset Failed",
-        description: result.error || "An error occurred while resetting the election.",
+        description: result.error || "An error occurred during the security wipe.",
       });
     }
     setIsResetting(false);
@@ -87,7 +92,7 @@ export default function AdminDashboard() {
   }
 
   const totalVoters = voters?.length || 0;
-  const totalVotes = blocks?.length || 0; // Each block represents one vote in this system
+  const totalVotes = blocks?.length || 0; 
 
   return (
     <div className="p-4 md:p-8 w-full max-w-7xl mx-auto space-y-8">
@@ -103,14 +108,16 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-card/50 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-card/50 backdrop-blur-sm border-0 shadow-lg cursor-pointer hover:bg-card/80 transition-all" onClick={() => router.push('/admin/voters')}>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Total Registered Voters</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{isLoadingVoters ? '...' : totalVoters}</div>
-            <p className="text-xs text-muted-foreground mt-1">Verified identities in database</p>
+            <p className="text-xs text-primary mt-1 flex items-center gap-1">
+               <UserCheck className="h-3 w-3" /> Manage Identity Registry
+            </p>
           </CardContent>
         </Card>
         <Card className="bg-card/50 backdrop-blur-sm border-0 shadow-lg">
@@ -178,7 +185,9 @@ export default function AdminDashboard() {
             )}
           </CardContent>
           <CardFooter className="bg-muted/20 border-t flex justify-center py-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/blockchain')}>View Full Ledger</Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/blockchain">View Full Ledger</Link>
+            </Button>
           </CardFooter>
         </Card>
 
@@ -190,28 +199,31 @@ export default function AdminDashboard() {
             <CardDescription>Administrative actions with irreversible consequences.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground font-bold">
+              SECURITY WIPE:
+            </p>
             <p className="text-xs text-muted-foreground">
-              Resetting the election will permanently delete all votes, blockchain records, and voter registration data.
+              This will permanently delete all voter identity profiles, the entire blockchain ledger, and all individual votes.
             </p>
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="w-full h-12 gap-2" disabled={isResetting}>
                   {isResetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  Reset Election Data
+                  Full Database Wipe
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogTitle>Permanent Destruction of Election Data</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently wipe the entire election state, including all votes and voter identity profiles.
+                    Are you absolutely certain? This operation will securely and permanently wipe the identity registry and the entire blockchain. This action is irreversible.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>Abort Operation</AlertDialogCancel>
                   <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Confirm Full Wipe
+                    Confirm Wipe
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
