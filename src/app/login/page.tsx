@@ -4,14 +4,11 @@
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser } from "@/firebase";
-import { ShieldCheck, Loader2 } from "lucide-react";
+import { ShieldCheck, Loader2, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
   const { user, isUserLoading } = useUser();
-
-  // We removed the auto-redirect useEffect here to ensure 
-  // the biometric check in LoginForm is never skipped.
 
   if (isUserLoading) {
     return (
@@ -41,11 +38,23 @@ export default function LoginPage() {
         <CardContent>
           <LoginForm />
           
-          <div className="mt-6 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-semibold text-primary hover:underline">
-              Register here
-            </Link>
+          <div className="mt-6 flex flex-col gap-4 text-center text-sm">
+            <div>
+              Don&apos;t have an account?{" "}
+              <Link href="/register" className="font-semibold text-primary hover:underline">
+                Register here
+              </Link>
+            </div>
+            
+            <div className="pt-4 border-t border-border/50">
+              <Link 
+                href="/login/admin" 
+                className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ShieldAlert className="h-4 w-4" />
+                Administrator Access
+              </Link>
+            </div>
           </div>
         </CardContent>
       </Card>
