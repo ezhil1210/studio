@@ -128,7 +128,22 @@ export function RegisterForm() {
 
       // 2. Create User in Firebase Auth
       setSubmittingStage('auth');
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      let userCredential;
+      try {
+        userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      } catch (authError: any) {
+        if (authError.code === 'auth/email-already-in-use') {
+          toast({
+            variant: "destructive",
+            title: "Email Already In Use",
+            description: "An account with this email already exists. Please log in instead.",
+          });
+          setIsSubmitting(false);
+          setSubmittingStage('idle');
+          return;
+        }
+        throw authError; // Re-throw other errors to the main catch block
+      }
       const user = userCredential.user;
 
       // 3. Update Profile Display Name
@@ -167,7 +182,7 @@ export function RegisterForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log('Form errors:', errors))} className="grid gap-4">
         <FormField
           control={form.control}
           name="name"
