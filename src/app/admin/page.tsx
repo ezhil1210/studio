@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -21,7 +22,7 @@ import {
   EyeOff,
   Settings2
 } from 'lucide-react';
-import { collection, query, orderBy, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { resetElection } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import {
