@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock, BarChart, Blocks } from 'lucide-react';
 import Link from 'next/link';
 
@@ -41,12 +40,9 @@ export default function Home() {
               <p className="mt-4 text-muted-foreground md:text-xl">
                 A secure, transparent, and tamper-proof e-voting system powered by blockchain technology.
               </p>
-              <div className="mt-8 flex justify-center gap-4">
+              <div className="mt-8 flex justify-center">
                 <Button asChild size="lg">
                   <Link href="/register">Get Started</Link>
-                </Button>
-                <Button asChild variant="outline" size="lg">
-                  <Link href="/login">View Demo</Link>
                 </Button>
               </div>
             </div>
