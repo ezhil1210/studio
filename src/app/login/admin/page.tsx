@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Loader2, ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
 
 const ADMIN_EMAIL = 'admin@evotechain.com';
@@ -25,7 +25,9 @@ export default function AdminLoginPage() {
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
       toast({
         variant: 'destructive',
         title: 'Email Required',
@@ -34,7 +36,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    if (email.trim().toLowerCase() !== ADMIN_EMAIL) {
+    if (normalizedEmail !== ADMIN_EMAIL) {
       toast({
         variant: 'destructive',
         title: 'Unauthorized',
@@ -48,9 +50,18 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      // For the demo, we use a default password 'admin123' in the background
-      // so that the admin only needs to provide their email.
-      await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), 'admin123');
+      // For the demo, we try to sign in with a default password.
+      // If the account doesn't exist, we create it automatically.
+      try {
+        await signInWithEmailAndPassword(auth, normalizedEmail, 'admin123');
+      } catch (error: any) {
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+          // Attempt to auto-register the admin if not found
+          await createUserWithEmailAndPassword(auth, normalizedEmail, 'admin123');
+        } else {
+          throw error;
+        }
+      }
       
       toast({
         title: 'Administrator Verified',
@@ -58,10 +69,11 @@ export default function AdminLoginPage() {
       });
       router.push('/admin');
     } catch (error: any) {
+      console.error("Admin Login Error:", error);
       toast({
         variant: 'destructive',
         title: 'Authentication Failed',
-        description: 'Please ensure the admin account is registered with the default credential.',
+        description: 'Could not establish an administrative session. Please try again.',
       });
       setIsLoading(false);
     }
@@ -73,7 +85,7 @@ export default function AdminLoginPage() {
         <div className="absolute bottom-0 left-0 right-0 top-0 bg-[radial-gradient(circle_500px_at_50%_200px,hsl(var(--destructive)/0.05),transparent)]"></div>
       </div>
       
-      <Card className="w-full max-w-md border-2 border-destructive/20 shadow-2xl bg-card/80 backdrop-blur-sm">
+      <Card className="w-full max-md border-2 border-destructive/20 shadow-2xl bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
             <div className="bg-destructive/10 p-2 rounded-full">
