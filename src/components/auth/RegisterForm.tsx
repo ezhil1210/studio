@@ -20,7 +20,7 @@ import { registerUser, isFaceAlreadyRegistered } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { Loader2, Camera, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Loader2, Camera, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
@@ -143,8 +143,8 @@ export function RegisterForm() {
           title: "Registration Successful",
           description: "Voter account and biometric profile created.",
         });
-        // Direct location change is more reliable for post-registration redirects
-        window.location.href = '/login';
+        // Hard redirect to ensure fresh state
+        window.location.assign('/login');
       } else {
         toast({
           variant: "destructive",
@@ -155,13 +155,22 @@ export function RegisterForm() {
         setSubmittingStage('idle');
       }
     } catch (error: any) {
+      console.error("Registration submission error:", error);
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description: error.message || "An unexpected error occurred during signup.",
+        description: error.message || "An unexpected error occurred during signup. Please try again.",
       });
       setIsSubmitting(false);
       setSubmittingStage('idle');
+    } finally {
+      // Safety check to ensure we aren't stuck in a loading state if redirect fails
+      setTimeout(() => {
+        if (window.location.pathname === '/register') {
+          setIsSubmitting(false);
+          setSubmittingStage('idle');
+        }
+      }, 5000);
     }
   }
 

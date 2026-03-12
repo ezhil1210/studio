@@ -49,7 +49,9 @@ function getDb() {
 export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promise<ActionResult> {
   try {
     const db = getDb();
-    const votersSnap = await getDocs(collection(db, "voters"));
+    // Limit scan to recent voters for performance in the prototype
+    const votersQuery = query(collection(db, "voters"), orderBy("registrationDate", "desc"), limit(10));
+    const votersSnap = await getDocs(votersQuery);
     
     if (votersSnap.empty) {
       return { success: true, isDuplicate: false };
@@ -58,17 +60,23 @@ export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promis
     const { verifyFace } = await import('@/ai/flows/verify-face-flow');
 
     // For a real production app, you would use vector embeddings and a vector database.
-    // For this demo, we scan existing voters to demonstrate biometric deduplication logic.
+    // For this demo, we scan recent voters to demonstrate biometric deduplication logic.
     for (const voterDoc of votersSnap.docs) {
       const voterData = voterDoc.data();
       if (voterData.faceImage) {
-        const verificationResult = await verifyFace({
-          registeredImage: voterData.faceImage,
-          capturedFaceImage: capturedFaceImage,
-        });
+        try {
+          const verificationResult = await verifyFace({
+            registeredImage: voterData.faceImage,
+            capturedFaceImage: capturedFaceImage,
+          });
 
-        if (verificationResult.isMatch) {
-          return { success: true, isDuplicate: true };
+          if (verificationResult.isMatch) {
+            return { success: true, isDuplicate: true };
+          }
+        } catch (aiError) {
+          console.error("AI Verification step failed for a voter:", aiError);
+          // Continue to next voter if one AI call fails
+          continue;
         }
       }
     }
@@ -76,7 +84,7 @@ export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promis
     return { success: true, isDuplicate: false };
   } catch (error: any) {
     console.error("Deduplication check error:", error);
-    return { success: false, error: "Failed to verify biometric uniqueness." };
+    return { success: false, error: "The identity verification service encountered an issue. Please try again." };
   }
 }
 
