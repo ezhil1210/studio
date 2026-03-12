@@ -222,6 +222,7 @@ export async function castVote({
 
 /**
  * Performs a deep wipe of all election-related data in the database.
+ * This effectively removes all linked emails and biometric profiles from the identity registry.
  */
 export async function resetElection(): Promise<ActionResult> {
   const db = getDb();
@@ -232,9 +233,12 @@ export async function resetElection(): Promise<ActionResult> {
     // 2. Fetch all blocks
     const blocksSnap = await getDocs(collection(db, "blocks"));
 
+    // 3. Fetch settings
+    const settingsSnap = await getDocs(collection(db, "settings"));
+
     const batch = writeBatch(db);
 
-    // Delete all voter profiles
+    // Delete all voter profiles (Clears linked emails and faces)
     votersSnap.forEach((v) => batch.delete(v.ref));
 
     // Delete all blocks and their sub-collection votes
@@ -243,6 +247,9 @@ export async function resetElection(): Promise<ActionResult> {
       votesSnap.forEach((v) => batch.delete(v.ref));
       batch.delete(blockDoc.ref);
     }
+
+    // Reset settings
+    settingsSnap.forEach((s) => batch.delete(s.ref));
 
     await batch.commit();
 
