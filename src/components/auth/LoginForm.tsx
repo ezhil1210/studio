@@ -16,7 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { verifyVoterBiometrics } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Loader2, Camera, CheckCircle2, ShieldAlert, LockKeyhole } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,7 +25,6 @@ import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 export function LoginForm() {
   const { toast } = useToast();
-  const router = useRouter();
   const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authStage, setAuthStage] = useState<'idle' | 'password' | 'biometric'>('idle');
@@ -93,23 +91,24 @@ export function LoginForm() {
     setIsSubmitting(true);
     
     try {
-      // Stage 1: Password Authentication (Client-side)
+      // Stage 1: Password Authentication
       setAuthStage('password');
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Stage 2: Biometric Verification (Server-side)
+      // Stage 2: Biometric Verification
       setAuthStage('biometric');
       const bioResult = await verifyVoterBiometrics(user.uid, values.faceImage);
 
       if (bioResult.success && bioResult.isMatch) {
         toast({
           title: "Access Granted",
-          description: "Password and Face Identity verified.",
+          description: "Identity verified. Redirecting to voting portal...",
         });
-        router.push('/vote');
+        // Use window.location for a hard redirect to ensure session state is fresh
+        window.location.href = '/vote';
       } else {
-        // Biometric failure: Force sign out immediately to maintain mandatory MFA
+        // Biometric failure: Force sign out immediately
         await signOut(auth);
         toast({
           variant: "destructive",

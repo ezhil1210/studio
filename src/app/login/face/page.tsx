@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { Loader2, Camera, UserCheck, Lock, CheckCircle2 } from 'lucide-react';
+import { Loader2, Camera, UserCheck, CheckCircle2 } from 'lucide-react';
 import { verifyVoterBiometrics } from '@/app/actions';
 import { useAuth } from '@/firebase';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -18,7 +17,6 @@ import { cn } from '@/lib/utils';
 
 export default function FaceLoginPage() {
   const { toast } = useToast();
-  const router = useRouter();
   const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [authStage, setAuthStage] = useState<'idle' | 'password' | 'biometric'>('idle');
@@ -105,9 +103,9 @@ export default function FaceLoginPage() {
       if (bioResult.success && bioResult.isMatch) {
         toast({
           title: 'Secure Login Successful',
-          description: 'Identity verified with Password and Face.',
+          description: 'Identity verified. Accessing voting portal...',
         });
-        router.push('/vote');
+        window.location.href = '/vote';
       } else {
         // Biometric failure: Force sign out immediately
         await signOut(auth);
@@ -138,7 +136,7 @@ export default function FaceLoginPage() {
       <Card className="w-full max-w-md border-0 shadow-2xl shadow-primary/10 bg-card/80 backdrop-blur-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Secure Face Login</CardTitle>
-          <CardDescription>Multi-factor authentication (Password + Face) required.</CardDescription>
+          <CardDescription>Multi-factor authentication required for election access.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
           <div className="grid gap-4">
