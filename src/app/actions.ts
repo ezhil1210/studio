@@ -12,7 +12,6 @@ import {
   limit,
   Timestamp,
   writeBatch,
-  deleteDoc,
 } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
@@ -26,6 +25,7 @@ type ActionResult = {
   error?: string;
   uid?: string;
   isMatch?: boolean;
+  isDuplicate?: boolean;
 };
 
 // Client SDK initialization (Used by Server Actions acting as a client)
@@ -41,6 +41,44 @@ function getDb() {
 }
 
 // --- AUTH ACTIONS ---
+
+/**
+ * Checks if a face image already matches any registered voter in the database.
+ * This prevents a single person from creating multiple identities.
+ */
+export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promise<ActionResult> {
+  try {
+    const db = getDb();
+    const votersSnap = await getDocs(collection(db, "voters"));
+    
+    if (votersSnap.empty) {
+      return { success: true, isDuplicate: false };
+    }
+
+    const { verifyFace } = await import('@/ai/flows/verify-face-flow');
+
+    // For a real production app, you would use vector embeddings and a vector database.
+    // For this demo, we scan existing voters to demonstrate biometric deduplication logic.
+    for (const voterDoc of votersSnap.docs) {
+      const voterData = voterDoc.data();
+      if (voterData.faceImage) {
+        const verificationResult = await verifyFace({
+          registeredImage: voterData.faceImage,
+          capturedFaceImage: capturedFaceImage,
+        });
+
+        if (verificationResult.isMatch) {
+          return { success: true, isDuplicate: true };
+        }
+      }
+    }
+
+    return { success: true, isDuplicate: false };
+  } catch (error: any) {
+    console.error("Deduplication check error:", error);
+    return { success: false, error: "Failed to verify biometric uniqueness." };
+  }
+}
 
 export async function registerUser(values: RegisterSchema): Promise<ActionResult> {
   const email = values.email.trim().toLowerCase();

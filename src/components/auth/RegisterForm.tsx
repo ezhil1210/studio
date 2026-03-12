@@ -16,11 +16,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { registerUser } from "@/app/actions";
+import { registerUser, isFaceAlreadyRegistered } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { Loader2, Camera, CheckCircle2 } from "lucide-react";
+import { Loader2, Camera, CheckCircle2, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
@@ -30,6 +30,7 @@ export function RegisterForm() {
   const router = useRouter();
   const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittingStage, setSubmittingStage] = useState<'idle' | 'deduplication' | 'auth' | 'profile'>('idle');
 
   // Webcam state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -96,15 +97,43 @@ export function RegisterForm() {
     setIsSubmitting(true);
     
     try {
-      // 1. Create User in Firebase Auth (Client-side)
+      // 1. Biometric Deduplication Check
+      // This prevents the same person from registering multiple accounts.
+      setSubmittingStage('deduplication');
+      const duplicateResult = await isFaceAlreadyRegistered(values.faceImage);
+      
+      if (duplicateResult.success && duplicateResult.isDuplicate) {
+        toast({
+          variant: "destructive",
+          title: "Duplicate Identity Detected",
+          description: "This biometric profile is already registered. Each individual can only have one voting account.",
+        });
+        setIsSubmitting(false);
+        setSubmittingStage('idle');
+        return;
+      }
+
+      if (!duplicateResult.success) {
+        toast({
+          variant: "destructive",
+          title: "Verification Service Error",
+          description: duplicateResult.error || "Could not verify biometric uniqueness.",
+        });
+        setIsSubmitting(false);
+        setSubmittingStage('idle');
+        return;
+      }
+
+      // 2. Create User in Firebase Auth (Client-side)
+      setSubmittingStage('auth');
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Update Profile Display Name
+      // 3. Update Profile Display Name
       await updateProfile(user, { displayName: values.name });
 
-      // 3. Save supplementary profile data (including Face) via Server Action
-      // We pass the UID as the voterId to link them
+      // 4. Save supplementary profile data via Server Action
+      setSubmittingStage('profile');
       const result = await registerUser({
         ...values,
         voterId: user.uid
@@ -123,6 +152,7 @@ export function RegisterForm() {
           description: result.error || "Failed to save biometric profile.",
         });
         setIsSubmitting(false);
+        setSubmittingStage('idle');
       }
     } catch (error: any) {
       toast({
@@ -131,6 +161,7 @@ export function RegisterForm() {
         description: error.message || "An unexpected error occurred during signup.",
       });
       setIsSubmitting(false);
+      setSubmittingStage('idle');
     }
   }
 
@@ -197,7 +228,7 @@ export function RegisterForm() {
                 <h3 className="text-lg font-medium">Mandatory Biometric Setup</h3>
                 {capturedImage && <CheckCircle2 className="h-5 w-5 text-green-500" />}
             </div>
-            <p className="text-sm text-muted-foreground">Your face capture is mandatory for secure identity verification during every login.</p>
+            <p className="text-sm text-muted-foreground">Your face capture is mandatory for secure identity verification and to prevent duplicate registrations.</p>
             <div className="space-y-4">
                 <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
                     <video ref={videoRef} className={cn("w-full h-full object-cover", !hasCameraPermission || capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
@@ -234,8 +265,19 @@ export function RegisterForm() {
         </div>
 
 
-        <Button type="submit" className="w-full mt-4" disabled={isSubmitting || !capturedImage}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : "Complete Secure Registration"}
+        <Button type="submit" className="w-full mt-4 h-12" disabled={isSubmitting || !capturedImage}>
+          {isSubmitting ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="animate-spin h-4 w-4" />
+              <span>
+                {submittingStage === 'deduplication' && 'Checking Biometric Uniqueness...'}
+                {submittingStage === 'auth' && 'Creating Account...'}
+                {submittingStage === 'profile' && 'Finalizing Profile...'}
+              </span>
+            </div>
+          ) : (
+            "Complete Secure Registration"
+          )}
         </Button>
       </form>
     </Form>
