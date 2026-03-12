@@ -43,7 +43,6 @@ export function RegisterForm() {
     defaultValues: {
       name: "",
       email: "",
-      voterId: "",
       password: "",
       confirmPassword: "",
       faceImage: "",
@@ -93,7 +92,11 @@ export function RegisterForm() {
   };
 
   async function onSubmit(values: RegisterSchema) {
-    if (!auth) return;
+    if (!auth) {
+      toast({ variant: "destructive", title: "Error", description: "Authentication service not available." });
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
@@ -133,17 +136,13 @@ export function RegisterForm() {
 
       // 4. Save supplementary profile data
       setSubmittingStage('profile');
-      const result = await registerUser({
-        ...values,
-        voterId: user.uid
-      });
+      const result = await registerUser(user.uid, values);
       
       if (result.success) {
         toast({
           title: "Registration Successful",
           description: "Voter account and biometric profile created.",
         });
-        // Hard redirect to ensure fresh state
         window.location.assign('/login');
       } else {
         toast({
@@ -163,14 +162,6 @@ export function RegisterForm() {
       });
       setIsSubmitting(false);
       setSubmittingStage('idle');
-    } finally {
-      // Safety check to ensure we aren't stuck in a loading state if redirect fails
-      setTimeout(() => {
-        if (window.location.pathname === '/register') {
-          setIsSubmitting(false);
-          setSubmittingStage('idle');
-        }
-      }, 5000);
     }
   }
 
@@ -259,7 +250,7 @@ export function RegisterForm() {
                  <div className="flex justify-center gap-4">
                     {!capturedImage ? (
                     <Button type="button" onClick={handleCapture} disabled={isSubmitting || !hasCameraPermission} variant="secondary">
-                        <Camera className="mr-2" /> Enroll Biometrics
+                        <Camera className="mr-2 h-4 w-4" /> Enroll Biometrics
                     </Button>
                     ) : (
                     <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting}>Retake Enrollment Photo</Button>

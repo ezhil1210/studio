@@ -59,8 +59,6 @@ export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promis
 
     const { verifyFace } = await import('@/ai/flows/verify-face-flow');
 
-    // For a real production app, you would use vector embeddings and a vector database.
-    // For this demo, we scan recent voters to demonstrate biometric deduplication logic.
     for (const voterDoc of votersSnap.docs) {
       const voterData = voterDoc.data();
       if (voterData.faceImage) {
@@ -75,7 +73,6 @@ export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promis
           }
         } catch (aiError) {
           console.error("AI Verification step failed for a voter:", aiError);
-          // Continue to next voter if one AI call fails
           continue;
         }
       }
@@ -88,24 +85,23 @@ export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promis
   }
 }
 
-export async function registerUser(values: RegisterSchema): Promise<ActionResult> {
+export async function registerUser(uid: string, values: RegisterSchema): Promise<ActionResult> {
   const email = values.email.trim().toLowerCase();
   try {
     const db = getDb();
-    const voterId = values.voterId;
 
     const newVoter = {
-      id: voterId,
+      id: uid,
       name: values.name,
       email: email,
-      hashedVoterId: createHash("sha256").update(values.voterId).digest("hex"),
+      hashedVoterId: createHash("sha256").update(uid).digest("hex"),
       registrationDate: Timestamp.now().toDate().toISOString(),
       faceImage: values.faceImage,
     };
 
-    await setDoc(doc(db, "voters", voterId), newVoter);
+    await setDoc(doc(db, "voters", uid), newVoter);
 
-    return { success: true, uid: voterId };
+    return { success: true, uid: uid };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to save voter profile." };
   }
@@ -224,9 +220,6 @@ export async function castVote({
 
 // --- ADMIN ACTIONS ---
 
-/**
- * Resets the entire election by deleting all blocks, votes, and voter profiles.
- */
 export async function resetElection(): Promise<ActionResult> {
   const db = getDb();
   try {
@@ -235,10 +228,8 @@ export async function resetElection(): Promise<ActionResult> {
 
     const batch = writeBatch(db);
 
-    // Delete voters
     votersSnap.forEach((v) => batch.delete(v.ref));
 
-    // Delete blocks and their nested votes
     for (const blockDoc of blocksSnap.docs) {
       const votesSnap = await getDocs(collection(db, `blocks/${blockDoc.id}/votes`));
       votesSnap.forEach((v) => batch.delete(v.ref));
