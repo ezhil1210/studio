@@ -9,9 +9,11 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { FaceMatchInputSchema, FaceMatchOutputSchema, type FaceMatchInput, type FaceMatchOutput } from '@/lib/schemas';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const verifyFacePrompt = ai.definePrompt({
     name: 'verifyFacePrompt',
+    model: 'googleai/gemini-3.1-flash-lite-preview',
     input: {
         schema: FaceMatchInputSchema,
     },
