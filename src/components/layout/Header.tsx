@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -17,6 +16,7 @@ import { Menu, Vote, Loader2, ShieldCheck, Users } from "lucide-react";
 import { useUser, useAuth } from "@/firebase";
 import { logoutUser } from "@/app/actions";
 import { signOut } from "firebase/auth";
+import { useState, useEffect } from "react";
 
 const ADMIN_EMAIL = 'admin@evotechain.com';
 
@@ -29,6 +29,12 @@ const navLinks = [
 export default function Header() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted to avoid hydration mismatches with dynamic user state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = async () => {
     await logoutUser(user?.uid || null);
@@ -44,7 +50,7 @@ export default function Header() {
   const userInitial = user?.isAnonymous ? "D" : user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" suppressHydrationWarning>
       <div className="container mx-auto flex h-14 items-center px-4">
         <div className="mr-4 hidden md:flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
@@ -53,7 +59,7 @@ export default function Header() {
               eVoteChain
             </span>
           </Link>
-          {user && (
+          {mounted && user && (
             <nav className="flex items-center space-x-6 text-sm font-medium">
               {navLinks.map((link) => (
                 <Link
@@ -99,7 +105,7 @@ export default function Header() {
                   <Vote className="h-6 w-6 text-primary" />
                   <span className="font-bold font-headline">eVoteChain</span>
                 </Link>
-                {user && (
+                {mounted && user && (
                   <nav className="flex flex-col space-y-4">
                     {navLinks.map((link) => (
                       <Link
@@ -135,7 +141,7 @@ export default function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-          {isUserLoading ? (
+          {!mounted || isUserLoading ? (
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           ) : user ? (
             <DropdownMenu>

@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import Header from '@/components/layout/Header';
@@ -26,9 +25,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased">
+      <body className="font-body antialiased" suppressHydrationWarning>
         <FirebaseClientProvider>
-            <div className="relative flex min-h-screen w-full flex-col bg-background">
+            <div className="relative flex min-h-screen w-full flex-col bg-background" suppressHydrationWarning>
               <Header />
               <main className="flex flex-1 flex-col items-center">
                 {children}
