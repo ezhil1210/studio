@@ -94,7 +94,7 @@ export function RegisterForm() {
 
   async function onSubmit(values: RegisterSchema) {
     if (!auth) {
-      toast({ variant: "destructive", title: "Error", description: "Authentication service not available." });
+      toast({ variant: "destructive", title: "Error", description: "Auth service unavailable." });
       return;
     }
     
@@ -102,15 +102,15 @@ export function RegisterForm() {
     setRawError(null);
     
     try {
-      // 1. Biometric Deduplication Check
+      // 1. Biometric Deduplication
       setSubmittingStage('deduplication');
       const duplicateResult = await isFaceAlreadyRegistered(values.faceImage);
       
       if (duplicateResult.success && duplicateResult.isDuplicate) {
         toast({
           variant: "destructive",
-          title: "Duplicate Identity Detected",
-          description: "This biometric profile is already registered. Each individual can only have one voting account.",
+          title: "Duplicate Identity",
+          description: "This biometric profile is already registered.",
         });
         setIsSubmitting(false);
         setSubmittingStage('idle');
@@ -118,29 +118,31 @@ export function RegisterForm() {
       }
 
       if (!duplicateResult.success) {
+        const errorMessage = duplicateResult.error || "Biometric Service Error";
+        setRawError(errorMessage);
         toast({
           variant: "destructive",
-          title: "Verification Service Error",
-          description: duplicateResult.error || "Could not verify biometric uniqueness.",
+          title: "Verification Error",
+          description: errorMessage,
         });
-        setRawError(duplicateResult.error || "Biometric Service Error");
         setIsSubmitting(false);
         setSubmittingStage('idle');
         return;
       }
 
-      // 2. Create User in Firebase Auth
+      // 2. Auth Creation
       setSubmittingStage('auth');
       let userCredential;
       try {
         userCredential = await createUserWithEmailAndPassword(auth, values.email.trim(), values.password);
       } catch (authError: any) {
-        setRawError(authError.message || String(authError));
+        const errorMessage = authError.message || String(authError);
+        setRawError(errorMessage);
         if (authError.code === 'auth/email-already-in-use') {
           toast({
             variant: "destructive",
-            title: "Email Already In Use",
-            description: "An account with this email already exists. Please log in instead.",
+            title: "Account Exists",
+            description: "Please log in instead.",
           });
           setIsSubmitting(false);
           setSubmittingStage('idle');
@@ -150,36 +152,37 @@ export function RegisterForm() {
       }
       const user = userCredential.user;
 
-      // 3. Update Profile Display Name
       await updateProfile(user, { displayName: values.name });
 
-      // 4. Save supplementary profile data
+      // 3. Save Profile
       setSubmittingStage('profile');
       const result = await registerUser(user.uid, values);
       
       if (result.success) {
         toast({
-          title: "Registration Successful",
-          description: "Voter account and biometric profile created.",
+          title: "Success",
+          description: "Voter account created.",
         });
         window.location.assign('/login');
       } else {
+        const errorMessage = result.error || "Failed to save profile.";
+        setRawError(errorMessage);
         toast({
           variant: "destructive",
           title: "Profile Error",
-          description: result.error || "Failed to save biometric profile.",
+          description: errorMessage,
         });
-        setRawError(result.error || "Firestore save failed.");
         setIsSubmitting(false);
         setSubmittingStage('idle');
       }
     } catch (error: any) {
-      console.error("Registration submission error:", error);
-      setRawError(error.message || String(error));
+      console.error("Registration error:", error);
+      const errorMessage = error.message || String(error);
+      setRawError(errorMessage);
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description: error.message || "An unexpected error occurred during signup. Please try again.",
+        description: errorMessage,
       });
       setIsSubmitting(false);
       setSubmittingStage('idle');
@@ -192,13 +195,9 @@ export function RegisterForm() {
         {rawError && (
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/50">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Registration Error Details</AlertTitle>
+            <AlertTitle>RAW FIREBASE ERROR</AlertTitle>
             <AlertDescription className="text-[11px] font-mono break-all mt-1">
               {rawError}
-              <div className="mt-2 p-2 bg-black/20 rounded font-sans text-xs">
-                <strong>Important Troubleshooting:</strong> 
-                <p className="mt-1">The error above indicates a configuration block. Check your <strong>Identity Toolkit API</strong> and <strong>Email/Password</strong> settings in the Firebase Console.</p>
-              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -260,10 +259,9 @@ export function RegisterForm() {
 
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Mandatory Biometric Setup</h3>
+                <h3 className="text-lg font-medium">Biometric Setup</h3>
                 {capturedImage && <CheckCircle2 className="h-5 w-5 text-green-500" />}
             </div>
-            <p className="text-sm text-muted-foreground">Your face capture is mandatory for secure identity verification and to prevent duplicate registrations.</p>
             <div className="space-y-4">
                 <div className="relative aspect-video w-full rounded-md border bg-muted overflow-hidden flex items-center justify-center">
                     <video ref={videoRef} className={cn("w-full h-full object-cover", !hasCameraPermission || capturedImage ? "hidden" : "block")} autoPlay muted playsInline />
@@ -276,7 +274,7 @@ export function RegisterForm() {
                         <Alert variant="destructive" className="m-4">
                             <AlertTitle>Webcam Required</AlertTitle>
                             <AlertDescription>
-                                Biometric enrollment is mandatory for voting security.
+                                Face enrollment is mandatory.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -285,10 +283,10 @@ export function RegisterForm() {
                  <div className="flex justify-center gap-4">
                     {!capturedImage ? (
                     <Button type="button" onClick={handleCapture} disabled={isSubmitting || !hasCameraPermission} variant="secondary">
-                        <Camera className="mr-2 h-4 w-4" /> Enroll Biometrics
+                        <Camera className="mr-2 h-4 w-4" /> Capture Face
                     </Button>
                     ) : (
-                    <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting}>Retake Enrollment Photo</Button>
+                    <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting}>Retake</Button>
                     )}
                 </div>
                 {form.formState.errors.faceImage && (
@@ -305,13 +303,13 @@ export function RegisterForm() {
             <div className="flex items-center gap-2">
               <Loader2 className="animate-spin h-4 w-4" />
               <span>
-                {submittingStage === 'deduplication' && 'Checking Biometric Uniqueness...'}
+                {submittingStage === 'deduplication' && 'Checking Biometrics...'}
                 {submittingStage === 'auth' && 'Creating Account...'}
-                {submittingStage === 'profile' && 'Finalizing Profile...'}
+                {submittingStage === 'profile' && 'Saving Profile...'}
               </span>
             </div>
           ) : (
-            "Complete Secure Registration"
+            "Complete Registration"
           )}
         </Button>
       </form>

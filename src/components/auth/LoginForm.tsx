@@ -111,22 +111,24 @@ export function LoginForm() {
         window.location.href = '/vote';
       } else {
         await signOut(auth);
-        setRawError(bioResult.error || "Identity Check Failed: The captured photo does not match our records.");
+        const errorMessage = bioResult.error || "Identity Check Failed: The captured photo does not match our records.";
+        setRawError(errorMessage);
         toast({
           variant: "destructive",
           title: "Identity Check Failed",
-          description: bioResult.error || "The captured photo does not match our records.",
+          description: errorMessage,
         });
         setIsSubmitting(false);
         setAuthStage('idle');
       }
     } catch (error: any) {
       console.error("Login Error:", error);
-      setRawError(error.message || String(error));
+      const errorMessage = error.message || String(error);
+      setRawError(errorMessage);
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message || "Invalid credentials. Please try again.",
+        description: errorMessage,
       });
       setIsSubmitting(false);
       setAuthStage('idle');
@@ -139,18 +141,9 @@ export function LoginForm() {
         {rawError && (
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/50">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>System Error Details</AlertTitle>
+            <AlertTitle>RAW FIREBASE ERROR</AlertTitle>
             <AlertDescription className="text-[11px] font-mono break-all mt-1">
               {rawError}
-              <div className="mt-2 p-2 bg-black/20 rounded font-sans text-xs">
-                <strong>Troubleshooting:</strong>
-                <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>Check if <strong>Email/Password</strong> provider is enabled in Firebase Console.</li>
-                  <li>Verify <strong>Identity Toolkit API</strong> is enabled in GCP Console.</li>
-                  <li>Check <strong>API Key Restrictions</strong> in GCP Credentials.</li>
-                  <li>Ensure the <strong>Genkit API Key</strong> is valid if the error is AI-related.</li>
-                </ul>
-              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -187,7 +180,7 @@ export function LoginForm() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <FormLabel className="text-sm font-medium flex items-center gap-2">
-                    <Camera className="h-4 w-4" /> Mandatory Biometric Identity
+                    <Camera className="h-4 w-4" /> Biometric Identity
                 </FormLabel>
                 {capturedImage && <CheckCircle2 className="h-4 w-4 text-green-500" />}
             </div>
@@ -201,7 +194,7 @@ export function LoginForm() {
                 {hasCameraPermission === false && (
                     <div className="p-4 text-center">
                         <ShieldAlert className="h-8 w-8 mx-auto text-destructive mb-2" />
-                        <p className="text-xs text-destructive">Webcam access required for voting.</p>
+                        <p className="text-xs text-destructive">Webcam access required.</p>
                     </div>
                 )}
                 <canvas ref={canvasRef} className="hidden" />
@@ -210,10 +203,10 @@ export function LoginForm() {
             <div className="flex justify-center">
                 {!capturedImage ? (
                 <Button type="button" onClick={handleCapture} disabled={isSubmitting || !hasCameraPermission} size="sm" variant="secondary">
-                    Capture to Verify Identity
+                    Capture Face
                 </Button>
                 ) : (
-                <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting} size="sm">Retake Photo</Button>
+                <Button type="button" variant="outline" onClick={handleRetake} disabled={isSubmitting} size="sm">Retake</Button>
                 )}
             </div>
             {form.formState.errors.faceImage && (
@@ -227,7 +220,7 @@ export function LoginForm() {
           {isSubmitting ? (
             <div className="flex items-center gap-2">
               <Loader2 className="animate-spin h-4 w-4" />
-              <span>{authStage === 'password' ? 'Checking Password...' : 'Verifying Identity...'}</span>
+              <span>{authStage === 'password' ? 'Checking Auth...' : 'Verifying Identity...'}</span>
             </div>
           ) : (
             <div className="flex items-center gap-2">
