@@ -139,8 +139,8 @@ export async function verifyVoterBiometrics(uid: string, capturedFaceImage: stri
     return { success: true, isMatch: true };
   } catch (error: any) {
     console.error("Biometric verification error:", error);
-    // Returning the actual error message to help with debugging
-    return { success: false, error: error.message || "The identity verification service is temporarily unavailable." };
+    // Returning the actual raw error message to help with debugging
+    return { success: false, error: error.message || String(error) };
   }
 }
 

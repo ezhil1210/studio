@@ -123,6 +123,7 @@ export function RegisterForm() {
           title: "Verification Service Error",
           description: duplicateResult.error || "Could not verify biometric uniqueness.",
         });
+        setRawError(duplicateResult.error || "Biometric Service Error");
         setIsSubmitting(false);
         setSubmittingStage('idle');
         return;
@@ -134,7 +135,7 @@ export function RegisterForm() {
       try {
         userCredential = await createUserWithEmailAndPassword(auth, values.email.trim(), values.password);
       } catch (authError: any) {
-        setRawError(authError.message || "Authentication service error.");
+        setRawError(authError.message || String(authError));
         if (authError.code === 'auth/email-already-in-use') {
           toast({
             variant: "destructive",
@@ -168,12 +169,13 @@ export function RegisterForm() {
           title: "Profile Error",
           description: result.error || "Failed to save biometric profile.",
         });
+        setRawError(result.error || "Firestore save failed.");
         setIsSubmitting(false);
         setSubmittingStage('idle');
       }
     } catch (error: any) {
       console.error("Registration submission error:", error);
-      setRawError(error.message || "An unexpected error occurred.");
+      setRawError(error.message || String(error));
       toast({
         variant: "destructive",
         title: "Registration Failed",
@@ -190,12 +192,12 @@ export function RegisterForm() {
         {rawError && (
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/50">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Registration Error</AlertTitle>
-            <AlertDescription className="text-[10px] font-mono break-all mt-1">
+            <AlertTitle>Registration Error Details</AlertTitle>
+            <AlertDescription className="text-[11px] font-mono break-all mt-1">
               {rawError}
               <div className="mt-2 p-2 bg-black/20 rounded font-sans text-xs">
-                <strong>Important:</strong> 
-                <p className="mt-1">The error above indicates Firebase is blocking your request. Check your <strong>Identity Toolkit API</strong> and <strong>Email/Password</strong> settings in the Firebase Console.</p>
+                <strong>Important Troubleshooting:</strong> 
+                <p className="mt-1">The error above indicates a configuration block. Check your <strong>Identity Toolkit API</strong> and <strong>Email/Password</strong> settings in the Firebase Console.</p>
               </div>
             </AlertDescription>
           </Alert>

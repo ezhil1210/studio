@@ -111,6 +111,7 @@ export function LoginForm() {
         window.location.href = '/vote';
       } else {
         await signOut(auth);
+        setRawError(bioResult.error || "Identity Check Failed: The captured photo does not match our records.");
         toast({
           variant: "destructive",
           title: "Identity Check Failed",
@@ -121,7 +122,7 @@ export function LoginForm() {
       }
     } catch (error: any) {
       console.error("Login Error:", error);
-      setRawError(error.message || "An unknown error occurred.");
+      setRawError(error.message || String(error));
       toast({
         variant: "destructive",
         title: "Login Failed",
@@ -138,8 +139,8 @@ export function LoginForm() {
         {rawError && (
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/50">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>System Error</AlertTitle>
-            <AlertDescription className="text-[10px] font-mono break-all mt-1">
+            <AlertTitle>System Error Details</AlertTitle>
+            <AlertDescription className="text-[11px] font-mono break-all mt-1">
               {rawError}
               <div className="mt-2 p-2 bg-black/20 rounded font-sans text-xs">
                 <strong>Troubleshooting:</strong>
@@ -147,6 +148,7 @@ export function LoginForm() {
                   <li>Check if <strong>Email/Password</strong> provider is enabled in Firebase Console.</li>
                   <li>Verify <strong>Identity Toolkit API</strong> is enabled in GCP Console.</li>
                   <li>Check <strong>API Key Restrictions</strong> in GCP Credentials.</li>
+                  <li>Ensure the <strong>Genkit API Key</strong> is valid if the error is AI-related.</li>
                 </ul>
               </div>
             </AlertDescription>
