@@ -71,8 +71,9 @@ export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promis
           if (verificationResult.isMatch) {
             return { success: true, isDuplicate: true };
           }
-        } catch (aiError) {
+        } catch (aiError: any) {
           console.error("AI Verification step failed for a voter:", aiError);
+          // Don't stop the whole process if one comparison fails, but log it
           continue;
         }
       }
@@ -81,7 +82,7 @@ export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promis
     return { success: true, isDuplicate: false };
   } catch (error: any) {
     console.error("Deduplication check error:", error);
-    return { success: false, error: "The identity verification service encountered an issue. Please try again." };
+    return { success: false, error: error.message || "The identity verification service encountered an issue. Please try again." };
   }
 }
 
@@ -138,7 +139,8 @@ export async function verifyVoterBiometrics(uid: string, capturedFaceImage: stri
     return { success: true, isMatch: true };
   } catch (error: any) {
     console.error("Biometric verification error:", error);
-    return { success: false, error: "The identity verification service is temporarily unavailable." };
+    // Returning the actual error message to help with debugging
+    return { success: false, error: error.message || "The identity verification service is temporarily unavailable." };
   }
 }
 
