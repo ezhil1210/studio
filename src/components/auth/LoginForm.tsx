@@ -17,17 +17,19 @@ import { Input } from "@/components/ui/input";
 import { verifyVoterBiometrics } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useRef, useEffect } from "react";
-import { Loader2, Camera, CheckCircle2, ShieldAlert, LockKeyhole } from "lucide-react";
+import { Loader2, Camera, CheckCircle2, ShieldAlert, LockKeyhole, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/firebase";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function LoginForm() {
   const { toast } = useToast();
   const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authStage, setAuthStage] = useState<'idle' | 'password' | 'biometric'>('idle');
+  const [rawError, setRawError] = useState<string | null>(null);
 
   // Webcam state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -89,11 +91,12 @@ export function LoginForm() {
   async function onSubmit(values: LoginSchema) {
     if (!auth) return;
     setIsSubmitting(true);
+    setRawError(null);
     
     try {
       // Stage 1: Password Authentication
       setAuthStage('password');
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email.trim(), values.password);
       const user = userCredential.user;
 
       // Stage 2: Biometric Verification
@@ -105,10 +108,8 @@ export function LoginForm() {
           title: "Access Granted",
           description: "Identity verified. Redirecting to voting portal...",
         });
-        // Use window.location for a hard redirect to ensure session state is fresh
         window.location.href = '/vote';
       } else {
-        // Biometric failure: Force sign out immediately
         await signOut(auth);
         toast({
           variant: "destructive",
@@ -119,6 +120,8 @@ export function LoginForm() {
         setAuthStage('idle');
       }
     } catch (error: any) {
+      console.error("Login Error:", error);
+      setRawError(error.message || "An unknown error occurred.");
       toast({
         variant: "destructive",
         title: "Login Failed",
@@ -132,6 +135,24 @@ export function LoginForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+        {rawError && (
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/50">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>System Error</AlertTitle>
+            <AlertDescription className="text-[10px] font-mono break-all mt-1">
+              {rawError}
+              <div className="mt-2 p-2 bg-black/20 rounded font-sans text-xs">
+                <strong>Troubleshooting:</strong>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>Check if <strong>Email/Password</strong> provider is enabled in Firebase Console.</li>
+                  <li>Verify <strong>Identity Toolkit API</strong> is enabled in GCP Console.</li>
+                  <li>Check <strong>API Key Restrictions</strong> in GCP Credentials.</li>
+                </ul>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <FormField
           control={form.control}
           name="email"

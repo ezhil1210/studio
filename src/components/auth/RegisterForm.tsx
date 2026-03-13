@@ -20,7 +20,7 @@ import { registerUser, isFaceAlreadyRegistered } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { Loader2, Camera, CheckCircle2 } from "lucide-react";
+import { Loader2, Camera, CheckCircle2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
@@ -31,6 +31,7 @@ export function RegisterForm() {
   const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittingStage, setSubmittingStage] = useState<'idle' | 'deduplication' | 'auth' | 'profile'>('idle');
+  const [rawError, setRawError] = useState<string | null>(null);
 
   // Webcam state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -98,6 +99,7 @@ export function RegisterForm() {
     }
     
     setIsSubmitting(true);
+    setRawError(null);
     
     try {
       // 1. Biometric Deduplication Check
@@ -130,8 +132,9 @@ export function RegisterForm() {
       setSubmittingStage('auth');
       let userCredential;
       try {
-        userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        userCredential = await createUserWithEmailAndPassword(auth, values.email.trim(), values.password);
       } catch (authError: any) {
+        setRawError(authError.message || "Authentication service error.");
         if (authError.code === 'auth/email-already-in-use') {
           toast({
             variant: "destructive",
@@ -142,7 +145,7 @@ export function RegisterForm() {
           setSubmittingStage('idle');
           return;
         }
-        throw authError; // Re-throw other errors to the main catch block
+        throw authError; 
       }
       const user = userCredential.user;
 
@@ -170,6 +173,7 @@ export function RegisterForm() {
       }
     } catch (error: any) {
       console.error("Registration submission error:", error);
+      setRawError(error.message || "An unexpected error occurred.");
       toast({
         variant: "destructive",
         title: "Registration Failed",
@@ -182,7 +186,21 @@ export function RegisterForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log('Form errors:', errors))} className="grid gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+        {rawError && (
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/50">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Registration Error</AlertTitle>
+            <AlertDescription className="text-[10px] font-mono break-all mt-1">
+              {rawError}
+              <div className="mt-2 p-2 bg-black/20 rounded font-sans text-xs">
+                <strong>Important:</strong> 
+                <p className="mt-1">The error above indicates Firebase is blocking your request. Check your <strong>Identity Toolkit API</strong> and <strong>Email/Password</strong> settings in the Firebase Console.</p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <FormField
           control={form.control}
           name="name"
