@@ -27,14 +27,22 @@ While this project utilizes advanced technology, it is a **Proof of Concept (PoC
 ### 1. The Audit Engine (Simulated Blockchain)
 - **Path**: `/blocks/{blockId}/votes/{voteId}`
 - **Hashing**: Client-side hashing uses the `Web Crypto API` (SHA-256) to allow users to verify that the ledger hasn't been tampered with since the block was created.
+- **Immutability**: Once a block is hashed and appended, any change to the vote data or previous hash will invalidate the entire chain's audit.
 
-### 2. AI Identity Layer
-- **Registration**: Captures a baseline face image. Performs a deduplication scan.
-- **Login**: Mandatory live capture to verify identity via Genkit.
+### 2. AI Identity Layer (Genkit)
+- **Model**: `gemini-3.1-flash-lite-preview` (Configured via Google Generative AI plugin).
+- **Registration**: Captures a baseline face image and performs a deduplication scan across the registry to prevent duplicate identities.
+- **Login**: Mandatory live capture to verify identity via a specialized AI flow that compares the live image to the stored reference.
 
-### 3. Stack
-- **Framework**: Next.js 15 (App Router)
-- **AI**: Google Genkit (`gemini-3.1-flash-lite-preview`)
-- **Database**: Firebase Firestore
-- **Auth**: Firebase Authentication
-- **UI**: Tailwind CSS + ShadCN UI
+### 3. Stack Detail
+- **Frontend**: Next.js 15 (App Router) with React 18.
+- **UI**: Tailwind CSS, Lucide Icons, and ShadCN components.
+- **Backend**: Firebase Firestore (NoSQL) for the ledger and registry.
+- **Auth**: Firebase Authentication (Email/Password) with custom server-side biometric verification logic.
+- **Logic**: Server Actions handle all database mutations and AI orchestration to keep business logic off the client.
+
+## 🛠️ Project Structure
+- `src/ai/`: Genkit configuration and face verification flows.
+- `src/app/actions.ts`: Server-side logic for voting, registration, and administration.
+- `src/app/blockchain/`: Verifiable ledger visualization.
+- `src/app/admin/`: Election lifecycle management.
