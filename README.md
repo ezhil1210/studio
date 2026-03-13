@@ -1,34 +1,40 @@
-# eVoteChain: Technical Documentation
+# eVoteChain: Technical Documentation & Disclosure
 
-eVoteChain is a secure, transparent, and tamper-proof e-voting system built with **Next.js 15**, **Firebase**, and **Gemini AI**.
+eVoteChain is a secure-concept, transparent, and tamper-evident e-voting system built with **Next.js 15**, **Firebase**, and **Gemini AI**.
+
+## ⚖️ Practicality & Security Disclosure (The "True" Analysis)
+
+While this project utilizes advanced technology, it is a **Proof of Concept (PoC)** and is not intended for high-stakes national or legal elections without significant upgrades.
+
+### 1. Centralization vs. Blockchain
+*   **Reality:** This app uses a **Simulated Blockchain**. The "blocks" are stored in a centralized Google Firestore database. 
+*   **Constraint:** Unlike a true blockchain (Ethereum, etc.), the data is controlled by a central administrator. It provides **Integrity** (you can detect if data was changed) but not **Decentralization** or **Censorship Resistance**.
+
+### 2. Anonymity & Privacy
+*   **Reality:** The current schema links `voterId` to `Vote` metadata.
+*   **Constraint:** In a real-world "Secret Ballot," cryptographic separation (such as ZK-Proofs or Blind Signatures) is required to ensure that even the database administrator cannot link a specific person to their choice.
+
+### 3. Biometric Security
+*   **Reality:** Face verification is handled by an AI model (`gemini-3.1-flash-lite-preview`) comparing 2D images.
+*   **Constraint:** This is vulnerable to "Presentation Attacks" (holding up a photo or video of a face). Professional systems require 3D liveness detection and hardware-backed secure enclaves.
+
+### 4. Administrative Risk
+*   **Reality:** The `Admin Portal` includes a `resetElection` function.
+*   **Constraint:** In a production voting system, no single account should have the power to delete the entire identity registry or ledger. This represents a critical Single Point of Failure (SPOF).
 
 ## 🚀 Technical Architecture
 
-### 1. The Blockchain Engine
-Votes are not just stored; they are chained.
+### 1. The Audit Engine (Simulated Blockchain)
 - **Path**: `/blocks/{blockId}/votes/{voteId}`
-- **Immutability**: Every block contains the `previousBlockHash`. Changing a single vote would break the cryptographic chain, which is detectable by any user through the "Audit Ledger" feature.
-- **Verification**: Client-side hashing uses the `Web Crypto API` (SHA-256) to ensure transparency.
+- **Hashing**: Client-side hashing uses the `Web Crypto API` (SHA-256) to allow users to verify that the ledger hasn't been tampered with since the block was created.
 
-### 2. AI Biometric Layer
-Powered by **Genkit** and **Gemini 3.1 Flash Lite Preview**.
-- **Registration**: Captures a baseline face image. Performs a "Deduplication Scan" to prevent a single person from creating multiple identities.
-- **Login**: Mandatory live capture. The AI verifies the live subject against the baseline reference.
-- **Security**: AI verification happens in a Server Action, shielding the model logic and API keys from the client.
+### 2. AI Identity Layer
+- **Registration**: Captures a baseline face image. Performs a deduplication scan.
+- **Login**: Mandatory live capture to verify identity via Genkit.
 
-### 3. Real-Time Data Flow
-- **Firestore Listeners**: The `Results` and `Blockchain` pages use real-time SDK listeners (`onSnapshot`) via custom hooks (`useCollection`).
-- **Aggregations**: Vote tallies are calculated dynamically from the blockchain blocks to ensure the results accurately reflect the ledger.
-
-### 4. Administrative Controls
-- **Admin Portal**: Restricted to `admin@evotechain.com`.
-- **Tally Visibility**: Allows authorities to hide live results until polls close to prevent "bandwagon" effects.
-- **Global Reset**: A secure wipe function to clear the registry and ledger for a new election cycle.
-
-## 🛠️ Stack
+### 3. Stack
 - **Framework**: Next.js 15 (App Router)
 - **AI**: Google Genkit (`gemini-3.1-flash-lite-preview`)
 - **Database**: Firebase Firestore
 - **Auth**: Firebase Authentication
 - **UI**: Tailwind CSS + ShadCN UI
-- **Charts**: Recharts
