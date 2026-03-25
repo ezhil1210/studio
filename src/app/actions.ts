@@ -139,7 +139,6 @@ export async function verifyVoterBiometrics(uid: string, capturedFaceImage: stri
     return { success: true, isMatch: true };
   } catch (error: any) {
     console.error("Biometric verification error:", error);
-    // Returning the actual raw error message to help with debugging
     return { success: false, error: error.message || String(error) };
   }
 }
@@ -229,32 +228,37 @@ export async function castVote({
 export async function resetElection(): Promise<ActionResult> {
   const db = getDb();
   try {
-    // 1. Fetch all voters
+    // 1. Fetch all documents across relevant collections
     const votersSnap = await getDocs(collection(db, "voters"));
-    
-    // 2. Fetch all blocks
     const blocksSnap = await getDocs(collection(db, "blocks"));
-
-    // 3. Fetch settings
     const settingsSnap = await getDocs(collection(db, "settings"));
 
     const batch = writeBatch(db);
 
-    // Delete all voter profiles (Clears linked emails and faces)
+    // Delete all voter profiles
     votersSnap.forEach((v) => batch.delete(v.ref));
 
-    // Delete all blocks and their sub-collection votes
+    // Delete all blocks and their nested votes
     for (const blockDoc of blocksSnap.docs) {
       const votesSnap = await getDocs(collection(db, `blocks/${blockDoc.id}/votes`));
       votesSnap.forEach((v) => batch.delete(v.ref));
       batch.delete(blockDoc.ref);
     }
 
-    // Reset settings
+    // Delete settings
     settingsSnap.forEach((s) => batch.delete(s.ref));
+
+    // 2. Initialize fresh system settings to prevent runtime errors
+    const defaultSettingsRef = doc(db, "settings", "election");
+    batch.set(defaultSettingsRef, { 
+      showResults: true,
+      lastResetAt: Timestamp.now().toDate().toISOString(),
+      status: 'idle'
+    });
 
     await batch.commit();
 
+    // 3. Clear server caches
     revalidatePath("/");
     revalidatePath("/results");
     revalidatePath("/blockchain");
@@ -264,6 +268,6 @@ export async function resetElection(): Promise<ActionResult> {
     return { success: true };
   } catch (error: any) {
     console.error("Reset election error:", error);
-    return { success: false, error: "Failed to securely wipe the database. Check logs." };
+    return { success: false, error: error.message || "Failed to securely wipe the database. Check system logs." };
   }
 }
