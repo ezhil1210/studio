@@ -38,11 +38,4 @@ While this project utilizes advanced technology, it is a **Proof of Concept (PoC
 - **Frontend**: Next.js 15 (App Router) with React 18.
 - **UI**: Tailwind CSS, Lucide Icons, and ShadCN components.
 - **Backend**: Firebase Firestore (NoSQL) for the ledger and registry.
-- **Auth**: Firebase Authentication (Email/Password) with custom server-side biometric verification logic.
-- **Logic**: Server Actions handle database mutations and AI orchestration to keep business logic off the client.
-
-## 🛠️ Project Structure
-- `src/ai/`: Genkit configuration and face verification flows.
-- `src/app/actions.ts`: Server-side logic for voting, registration, and administration.
-- `src/app/blockchain/`: Verifiable ledger visualization.
-- `src/app/admin/`: Election lifecycle management.
+- **Auth**: Firebase Authentication (Email/Password) with custom biometric verification logic.

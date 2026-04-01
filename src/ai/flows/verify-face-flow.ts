@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A flow to compare two face images using AI prompting.
@@ -9,7 +8,6 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { FaceMatchInputSchema, FaceMatchOutputSchema, type FaceMatchInput, type FaceMatchOutput } from '@/lib/schemas';
-import { googleAI } from '@genkit-ai/google-genai';
 
 const verifyFacePrompt = ai.definePrompt({
     name: 'verifyFacePrompt',
@@ -48,6 +46,7 @@ const verifyFaceFlow = ai.defineFlow(
   async (input) => {
     const { output } = await verifyFacePrompt(input);
 
+    // Confidence threshold of 70% to ensure high-integrity matching
     if (!output || output.confidence < 0.7) {
         return { isMatch: false };
     }

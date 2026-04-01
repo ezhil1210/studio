@@ -1,4 +1,3 @@
-
 "use server";
 
 import {
@@ -12,7 +11,6 @@ import {
   limit,
   Timestamp,
   writeBatch,
-  deleteDoc,
 } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
 import { createHash } from "crypto";
@@ -29,7 +27,7 @@ type ActionResult = {
   isDuplicate?: boolean;
 };
 
-// Client SDK initialization (Used by Server Actions acting as a client)
+// Client SDK initialization for Server Actions
 function getFirebaseApp(): FirebaseApp {
   if (getApps().length) {
     return getApp();
@@ -41,16 +39,15 @@ function getDb() {
   return getFirestore(getFirebaseApp());
 }
 
-// --- AUTH ACTIONS ---
+// --- IDENTITY & AUTH ACTIONS ---
 
 /**
- * Checks if a face image already matches any registered voter in the database.
- * This prevents a single person from creating multiple identities.
+ * DEEP SCAN: Checks if a face image already matches any registered voter.
+ * This is the primary defense against Sybil attacks in eVoteChain.
  */
 export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promise<ActionResult> {
   try {
     const db = getDb();
-    // Scan voters for identity matches
     const votersSnap = await getDocs(collection(db, "voters"));
     
     if (votersSnap.empty) {
@@ -71,18 +68,15 @@ export async function isFaceAlreadyRegistered(capturedFaceImage: string): Promis
           if (verificationResult.isMatch) {
             return { success: true, isDuplicate: true };
           }
-        } catch (aiError: any) {
-          console.error("AI Verification step failed for a voter:", aiError);
-          // Don't stop the whole process if one comparison fails, but log it
-          continue;
+        } catch (aiError) {
+          continue; // Skip individual failure to allow global scan
         }
       }
     }
 
     return { success: true, isDuplicate: false };
   } catch (error: any) {
-    console.error("Deduplication check error:", error);
-    return { success: false, error: error.message || "The identity verification service encountered an issue. Please try again." };
+    return { success: false, error: "The identity service is temporarily unavailable." };
   }
 }
 
@@ -101,7 +95,6 @@ export async function registerUser(uid: string, values: RegisterSchema): Promise
     };
 
     await setDoc(doc(db, "voters", uid), newVoter);
-
     return { success: true, uid: uid };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to save voter profile." };
@@ -109,7 +102,7 @@ export async function registerUser(uid: string, values: RegisterSchema): Promise
 }
 
 /**
- * Verifies a captured face image against the user's registered image in Firestore.
+ * BIOMETRIC MFA: Verifies user identity before allowing access.
  */
 export async function verifyVoterBiometrics(uid: string, capturedFaceImage: string): Promise<ActionResult> {
   try {
@@ -122,10 +115,9 @@ export async function verifyVoterBiometrics(uid: string, capturedFaceImage: stri
     
     const voterData = voterDoc.data();
     if (!voterData.faceImage) {
-      return { success: false, error: "Baseline biometric data is missing for this account." };
+      return { success: false, error: "No baseline biometric record found." };
     }
 
-    // AI Face Verification using Gemini via Genkit
     const { verifyFace } = await import('@/ai/flows/verify-face-flow');
     const verificationResult = await verifyFace({
       registeredImage: voterData.faceImage,
@@ -133,13 +125,12 @@ export async function verifyVoterBiometrics(uid: string, capturedFaceImage: stri
     });
 
     if (!verificationResult.isMatch) {
-      return { success: false, isMatch: false, error: "Identity verification failed. The captured photo does not match our records." };
+      return { success: false, isMatch: false, error: "Identity verification failed." };
     }
 
     return { success: true, isMatch: true };
   } catch (error: any) {
-    console.error("Biometric verification error:", error);
-    return { success: false, error: error.message || String(error) };
+    return { success: false, error: "Biometric service error." };
   }
 }
 
@@ -147,12 +138,11 @@ export async function logoutUser(uid: string | null): Promise<ActionResult> {
   return { success: true };
 }
 
-export async function demoLogin(): Promise<ActionResult> {
-  return { success: true };
-}
+// --- BLOCKCHAIN VOTING ACTIONS ---
 
-// --- VOTING ACTIONS ---
-
+/**
+ * BLOCKCHAIN COMMIT: Appends a vote as an immutable block.
+ */
 export async function castVote({
   candidate,
   voterId,
@@ -163,6 +153,7 @@ export async function castVote({
   const db = getDb();
 
   try {
+    // 1. Get the hash of the most recent block to link the chain
     const lastBlockQuery = query(
       collection(db, "blocks"),
       orderBy("timestamp", "desc"),
@@ -170,29 +161,32 @@ export async function castVote({
     );
     const lastBlockSnapshot = await getDocs(lastBlockQuery);
     const previousBlockHash = lastBlockSnapshot.empty
-      ? "0".repeat(64)
+      ? "0".repeat(64) // Genesis Block
       : lastBlockSnapshot.docs[0].data().hash;
 
     const blockId = doc(collection(db, "blocks")).id;
     const voteId = doc(collection(db, `blocks/${blockId}/votes`)).id;
 
+    const timestamp = Timestamp.now().toDate().toISOString();
+
     const newVote = {
       id: voteId,
       voterId: voterId,
       encryptedVoteData: candidate,
-      timestamp: Timestamp.now().toDate().toISOString(),
+      timestamp,
       blockId: blockId,
     };
 
     const newBlockData = {
       id: blockId,
-      timestamp: newVote.timestamp,
-      previousBlockHash: previousBlockHash,
+      timestamp,
+      previousBlockHash,
       voteIds: [newVote.id],
       voterIds: [voterId],
       hash: "",
     };
 
+    // 2. Cryptographic Proof: Hash current block data + link to previous hash
     const blockContentForHashing = {
       id: newBlockData.id,
       timestamp: newBlockData.timestamp,
@@ -204,6 +198,7 @@ export async function castVote({
       .update(JSON.stringify(blockContentForHashing))
       .digest("hex");
 
+    // 3. Atomically commit block and vote data
     const batch = writeBatch(db);
     batch.set(doc(db, "blocks", newBlockData.id), newBlockData);
     batch.set(doc(db, `blocks/${newBlockData.id}/votes`, newVote.id), newVote);
@@ -215,40 +210,31 @@ export async function castVote({
 
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: "Could not cast vote. Please try again." };
+    return { success: false, error: "Blockchain commit failed." };
   }
 }
 
-// --- ADMIN ACTIONS ---
+// --- ADMINISTRATIVE ACTIONS ---
 
-/**
- * Performs a deep wipe of all election-related data in the database.
- * This effectively removes all linked emails and biometric profiles from the identity registry.
- */
 export async function resetElection(): Promise<ActionResult> {
   const db = getDb();
   try {
-    // 1. Fetch all documents across relevant collections
     const votersSnap = await getDocs(collection(db, "voters"));
     const blocksSnap = await getDocs(collection(db, "blocks"));
     const settingsSnap = await getDocs(collection(db, "settings"));
 
     const batch = writeBatch(db);
 
-    // Delete all voter profiles
     votersSnap.forEach((v) => batch.delete(v.ref));
 
-    // Delete all blocks and their nested votes
     for (const blockDoc of blocksSnap.docs) {
       const votesSnap = await getDocs(collection(db, `blocks/${blockDoc.id}/votes`));
       votesSnap.forEach((v) => batch.delete(v.ref));
       batch.delete(blockDoc.ref);
     }
 
-    // Delete settings
     settingsSnap.forEach((s) => batch.delete(s.ref));
 
-    // 2. Initialize fresh system settings to prevent runtime errors
     const defaultSettingsRef = doc(db, "settings", "election");
     batch.set(defaultSettingsRef, { 
       showResults: true,
@@ -258,16 +244,13 @@ export async function resetElection(): Promise<ActionResult> {
 
     await batch.commit();
 
-    // 3. Clear server caches
     revalidatePath("/");
     revalidatePath("/results");
     revalidatePath("/blockchain");
     revalidatePath("/admin");
-    revalidatePath("/admin/voters");
 
     return { success: true };
   } catch (error: any) {
-    console.error("Reset election error:", error);
-    return { success: false, error: error.message || "Failed to securely wipe the database. Check system logs." };
+    return { success: false, error: "Secure wipe failed." };
   }
 }
