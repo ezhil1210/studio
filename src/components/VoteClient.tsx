@@ -33,7 +33,7 @@ export function VoteClient() {
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: "Administrators are strictly prohibited from casting votes to ensure election neutrality.",
+        description: "Administrators are strictly prohibited from participating in active balloting.",
       });
       return;
     }
@@ -42,7 +42,7 @@ export function VoteClient() {
       toast({
         variant: "destructive",
         title: "No candidate selected",
-        description: "Please select a candidate before casting your vote.",
+        description: "Please select a candidate before casting your ballot.",
       });
       return;
     }
@@ -51,7 +51,7 @@ export function VoteClient() {
       toast({
         variant: "destructive",
         title: "Session Expired",
-        description: "Please log in again to cast your vote.",
+        description: "Please log in again to cast your ballot.",
       });
       return;
     }
@@ -64,14 +64,14 @@ export function VoteClient() {
 
     if (result.success) {
       toast({
-        title: "Vote Cast Successfully",
-        description: "Your vote has been securely recorded on the blockchain.",
+        title: "Ballot Recorded Successfully",
+        description: "Your selection has been securely added to the ledger.",
       });
       setVoteReceipt({ voteId: Math.random().toString(36).substring(2, 15), candidate: selectedCandidate });
     } else {
       toast({
         variant: "destructive",
-        title: "Voting Failed",
+        title: "Submission Failed",
         description: result.error || "An unknown error occurred.",
       });
     }
@@ -80,7 +80,7 @@ export function VoteClient() {
 
   const copyReceipt = () => {
     if (voteReceipt) {
-      navigator.clipboard.writeText(`Vote ID: ${voteReceipt.voteId}\nCandidate: ${voteReceipt.candidate}`);
+      navigator.clipboard.writeText(`Receipt ID: ${voteReceipt.voteId}\nCandidate: ${voteReceipt.candidate}`);
       toast({ title: "Copied to clipboard" });
     }
   };
@@ -119,9 +119,9 @@ export function VoteClient() {
             <div className="mx-auto bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 rounded-full p-3 w-fit">
               <CheckCircle className="h-10 w-10" />
             </div>
-            <CardTitle className="text-2xl mt-4">Vote Recorded Successfully</CardTitle>
+            <CardTitle className="text-2xl mt-4">Ballot Recorded Successfully</CardTitle>
             <CardDescription>
-                Your vote is now a permanent part of the blockchain ledger.
+                Your selection is now a permanent part of the secure ledger.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -136,7 +136,7 @@ export function VoteClient() {
                 </div>
                 <div className="space-y-1">
                     <p className="text-[10px] text-muted-foreground uppercase font-semibold">Immutable Record ID</p>
-                    <p className="font-mono text-sm truncate">BC-{voteReceipt.voteId}</p>
+                    <p className="font-mono text-sm truncate">EV-{voteReceipt.voteId}</p>
                 </div>
                 <Button variant="ghost" size="sm" className="w-full h-8 gap-2 text-xs" onClick={copyReceipt}>
                     <Copy className="h-3 w-3" /> Copy Verification Details
@@ -160,8 +160,8 @@ export function VoteClient() {
   return (
     <div className="p-4 md:p-8 w-full max-w-6xl mx-auto">
       <div className="text-center mb-12">
-        <h1 className="text-3xl md:text-5xl font-bold tracking-tight">Cast Your Secure Vote</h1>
-        <p className="text-muted-foreground mt-4 text-lg">Your selection will be encrypted and appended to the immutable blockchain ledger.</p>
+        <h1 className="text-3xl md:text-5xl font-bold tracking-tight">Cast Your Secure Ballot</h1>
+        <p className="text-muted-foreground mt-4 text-lg">Your selection will be encrypted and appended to the immutable secure ledger.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -211,12 +211,12 @@ export function VoteClient() {
           {isSubmitting ? (
             <>
               <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-              Securing Block...
+              Recording Ballot...
             </>
           ) : (
             <>
                 <ShieldCheck className="mr-3 h-5 w-5" />
-                Commit Vote to Blockchain
+                Confirm Secure Ballot
             </>
           )}
         </Button>

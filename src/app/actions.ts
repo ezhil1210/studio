@@ -1,3 +1,4 @@
+
 "use server";
 
 import {
@@ -138,10 +139,10 @@ export async function logoutUser(uid: string | null): Promise<ActionResult> {
   return { success: true };
 }
 
-// --- BLOCKCHAIN VOTING ACTIONS ---
+// --- SECURE LEDGER ACTIONS ---
 
 /**
- * BLOCKCHAIN COMMIT: Appends a vote as an immutable block.
+ * LEDGER APPEND: Records a ballot as an immutable block.
  */
 export async function castVote({
   candidate,
@@ -198,7 +199,7 @@ export async function castVote({
       .update(JSON.stringify(blockContentForHashing))
       .digest("hex");
 
-    // 3. Atomically commit block and vote data
+    // 3. Atomically save block and vote data
     const batch = writeBatch(db);
     batch.set(doc(db, "blocks", newBlockData.id), newBlockData);
     batch.set(doc(db, `blocks/${newBlockData.id}/votes`, newVote.id), newVote);
@@ -210,7 +211,7 @@ export async function castVote({
 
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: "Blockchain commit failed." };
+    return { success: false, error: "Ledger recording failed." };
   }
 }
 
