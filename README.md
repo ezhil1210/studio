@@ -1,4 +1,3 @@
-
 # eVoteChain: High-Integrity AI-Driven E-Voting Platform
 
 eVoteChain is a professional proof-of-concept for a secure digital election system. Built with **Next.js 15**, **Firebase**, and **Genkit**, it integrates **Gemini-3.1-Flash-Lite-Preview** for biometric identity verification and a **Simulated Blockchain Ledger** for immutable record-keeping.
@@ -13,7 +12,7 @@ eVoteChain replaces traditional password-only security with a multi-layered iden
 ### 2. Immutable Secure Ledger (Simulated Blockchain)
 To ensure transparency, every ballot cast is recorded as an immutable block in a cryptographic chain.
 *   **Structure**: Votes are stored at `/blocks/{blockId}/votes/{voteId}`.
-*   **Cryptographic Chaining**: Each block contains a SHA-256 hash derived from the current vote data concatenated with the hash of the preceding block.
+*   **Cryptographic Chaining**: Each block contains a SHA-256 hash derived from the current vote data concatenated with the hash of the preceding block. 
 *   **Integrity Auditing**: The platform includes a public audit tool that uses the **Web Crypto API** to re-calculate and verify hashes directly in the browser.
 
 ### 3. Frontend & Real-Time Visualization
@@ -26,23 +25,9 @@ To ensure transparency, every ballot cast is recorded as an immutable block in a
 
 eVoteChain is a **Proof of Concept (PoC)** designed to demonstrate modern identity and ledger technologies. It is not intended for legal national elections without the following cryptographic upgrades:
 
-### 1. Centralization vs. Decentralization
-*   **Current State**: The system uses a **Simulated Blockchain** stored in a centralized Google Firestore database.
-*   **Reality**: While it provides **Integrity Tracking** (tampering is detectable), it does not provide **Censorship Resistance**. A true blockchain would be distributed across a decentralized network of independent nodes.
-
-### 2. Ballot Secrecy (Anonymity)
-*   **Current State**: The schema links `voterId` to a `Vote`.
-*   **Reality**: In a real "Secret Ballot," zero-knowledge proofs or blind signatures are required to prove eligibility without revealing the voter's identity to the database administrator.
-
-### 3. Advanced Biometric Spoofing
-*   **Current State**: Verification is performed by comparing 2D images via Gemini.
-*   **Reality**: Professional biometric systems require 3D depth sensing and specialized hardware (e.g., Apple's Secure Enclave) to prevent "presentation attacks" (using a photo or screen to spoof a face).
-
-## 🛠️ Key Features
-*   **Admin Command Center**: Toggle public result visibility and monitor system health.
-*   **Public Ledger Audit**: Allows anyone to verify the cryptographic chain.
-*   **Instant Tallying**: Real-time synchronization of voting trends.
-*   **Secure Wipe Protocol**: Authorized admins can clear the entire registry and ledger between election cycles.
+1.  **Centralization**: While the ledger is immutable to tampering, it is hosted on a centralized database (Firestore). A production system would require a decentralized node network (Ethereum, Polygon, etc.).
+2.  **Anonymity**: In this PoC, votes are linked to voter IDs in the database for demonstration purposes. A real-world solution would utilize **Zero-Knowledge Proofs (ZKP)** to verify eligibility without revealing identity.
+3.  **Liveness Detection**: The current AI verification uses 2D image comparison. High-stakes systems require 3D depth sensing or infra-red liveness checks to prevent spoofing with photos/videos.
 
 ## 📦 Tech Stack
 *   **Fullstack**: Next.js 15 (Server Components & Actions)
