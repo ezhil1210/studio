@@ -25,9 +25,7 @@ To ensure transparency, every ballot cast is recorded as an immutable block in a
 
 eVoteChain is a **Proof of Concept (PoC)** designed to demonstrate modern identity and ledger technologies. It is not intended for legal national elections without the following cryptographic upgrades:
 
-1.  **Centralization**: While the ledger is immutable to tampering, it is hosted on a centralized database (Firestore). A production system would require a decentralized node network (Ethereum, Polygon, etc.).
-2.  **Anonymity**: In this PoC, votes are linked to voter IDs in the database for demonstration purposes. A real-world solution would utilize **Zero-Knowledge Proofs (ZKP)** to verify eligibility without revealing identity.
-3.  **Liveness Detection**: The current AI verification uses 2D image comparison. High-stakes systems require 3D depth sensing or infra-red liveness checks to prevent spoofing with photos/videos.
+
 
 ## 📦 Tech Stack
 *   **Fullstack**: Next.js 15 (Server Components & Actions)
